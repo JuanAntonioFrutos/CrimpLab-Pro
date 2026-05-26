@@ -48,7 +48,6 @@
             border: 2px solid transparent;
         }
 
-        /* --- ESTADOS DE COLOR DE LA INTERFAZ --- */
         .state-preparing { background-color: #3d250c !important; border: 2px solid var(--warning-color); }
         .state-working { background-color: #3d0c0c !important; border: 2px solid var(--danger-color); }
         .state-resting { background-color: #0c3d1e !important; border: 2px solid var(--primary-color); }
@@ -125,7 +124,7 @@
             </div>
 
             <div class="grid-2">
-                <button class="btn btn-primary" onclick="conectarBluetooth()">Conectar</button>
+                <button id="btn-conectar-ble" class="btn btn-primary" onclick="conectarBluetooth()">Conectar</button>
                 <button class="btn btn-danger" style="background:#424242;" onclick="tararSensor()">Tarar (Cero)</button>
             </div>
             <button class="btn" style="background:#2c2c35; color:var(--text-secondary);" id="btn-demo-toggle" onclick="conmutarDemoGlobal()">Activar Modo Demo</button>
@@ -218,10 +217,10 @@
 
             <div id="wrapper-plantilla-custom" style="background: rgba(41, 182, 246, 0.1); border: 1px dashed var(--accent-color); border-radius: 10px; padding: 12px; margin-bottom: 15px; display: block;">
                 <div class="form-group" style="margin-bottom: 8px;">
-                    <label style="color: var(--accent-color)">Nombre de tu plantilla nueva:</label>
-                    <input type="text" id="custom-template-name" placeholder="Ej: Multipower 15mm, Bloque Extremo...">
+                    <label style="color: var(--accent-color)">Guardar esta configuración como plantilla:</label>
+                    <input type="text" id="custom-template-name" placeholder="Ej: Regleta 15mm, Romo 50%...">
                 </div>
-                <button class="btn btn-accent" style="margin-top:0; padding: 10px; font-size: 0.9rem;" onclick="guardarPlantillaUsuario()">💾 Guardar Configuración</button>
+                <button class="btn btn-accent" style="margin-top:0; padding: 10px; font-size: 0.9rem;" onclick="guardarPlantillaUsuario()">💾 Guardar Plantilla</button>
             </div>
 
             <button id="btn-delete-template" class="btn btn-danger" style="display:none; margin-top:-5px; margin-bottom: 15px; padding:10px; font-size:0.9rem;" onclick="eliminarPlantillaUsuario()">🗑️ Eliminar Plantilla Seleccionada</button>
@@ -269,64 +268,35 @@
             <h2>Historial de Sesiones</h2>
             <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
                 <div class="grid-2">
-                    <button class="btn btn-accent" style="padding: 10px 5px; font-size:0.85rem; margin:0;" onclick="abrirModalExportar()">📤 Exportar CSV</button>
-
+                    <button class="btn btn-accent" style="padding: 10px 5px; font-size:0.85rem; margin:0;" onclick="exportarCSV()">📤 Exportar CSV</button>
                     <label for="importar-file" class="btn" style="background: #29b6f6; color: #000; text-align: center; padding: 10px 5px; font-size: 0.85rem; margin: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
                         📥 Importar CSV
                     </label>
                     <input type="file" id="importar-file" accept=".csv" style="display: none;" onchange="importarCSV(event)">
                 </div>
-
                 <button class="btn btn-danger" style="padding: 12px; font-size:0.9rem; margin:0; width: 100%;" onclick="borrarHistorial()">🗑️ Borrar Todo el Historial</button>
             </div>
             <div id="lista-historial" class="history-list"></div>
         </div>
 
-    </div> <div id="custom-confirm-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
-        <div style="background: var(--card-color); border: 2px solid var(--danger-color); border-radius: 20px; padding: 25px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-            <div style="font-size: 3rem; margin-bottom: 10px;">⚠️</div>
-            <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 1.3rem;">¿Vaciar historial por completo?</h3>
-            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.4;">Esta acción borrará de forma permanente todas tus sesiones y récords guardados localmente. No se puede deshacer.</p>
-            <div class="grid-2">
-                <button class="btn" style="background: #2c2c35; color: var(--text-color); margin: 0;" onclick="cerrarConfirmarBorrado()">Cancelar</button>
-                <button class="btn btn-danger" style="margin: 0;" onclick="confirmarBorradoHistorial()">Sí, Borrar todo</button>
+        <div id="custom-confirm-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+            <div style="background: var(--card-color); border: 2px solid var(--danger-color); border-radius: 20px; padding: 25px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+                <div style="font-size: 3rem; margin-bottom: 10px;">⚠️</div>
+                <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 1.3rem;">¿Vaciar historial por completo?</h3>
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.4;">Esta acción borrará de forma permanente todas tus sesiones y récords guardados localmente. No se puede deshacer.</p>
+                <div class="grid-2">
+                    <button class="btn" style="background: #2c2c35; color: var(--text-color); margin: 0;" onclick="cerrarConfirmarBorrado()">Cancelar</button>
+                    <button class="btn btn-danger" style="margin: 0;" onclick="confirmarBorradoHistorial()">Sí, Borrar todo</button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div id="custom-alert-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1001; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
-        <div style="background: var(--card-color); border: 2px solid var(--accent-color); border-radius: 20px; padding: 25px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-            <div id="custom-alert-icon" style="font-size: 3rem; margin-bottom: 10px;">✨</div>
-            <h3 id="custom-alert-title" style="margin: 0 0 10px 0; color: #fff; font-size: 1.3rem;">Notificación</h3>
-            <p id="custom-alert-text" style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.4;"></p>
-            <button class="btn btn-accent" style="margin: 0; width: 100%;" onclick="cerrarAlertaPersonalizada()">Entendido</button>
-        </div>
-    </div>
-
-    <div id="custom-bluetooth-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1002; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
-        <div style="background: var(--card-color); border: 2px solid var(--primary-color); border-radius: 20px; padding: 25px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-            <div style="font-size: 3rem; margin-bottom: 10px; color: var(--accent-color);">📡</div>
-            <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 1.3rem;">Buscando Sensores...</h3>
-            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 15px;">Asegúrate de que tu dinamómetro digital Bluetooth está encendido y emitiendo señal.</p>
-            <div style="background: #121214; border: 1px solid var(--border-color); border-radius: 10px; padding: 15px; text-align: left; margin-bottom: 20px; max-height: 120px; overflow-y: auto;">
-                <div style="color: var(--primary-color); font-size: 0.85rem; margin-bottom: 8px; cursor:pointer;" onclick="vincularDispositivoSimulado('CrimpLab_Dynamometer_V4')">🔄 [Simulado] CrimpLab_Dynamometer_V4</div>
-                <div style="color: var(--text-secondary); font-size: 0.82rem; font-style: italic;">Buscando otros dispositivos cercanos...</div>
-            </div>
-            <button class="btn" style="background: #2c2c35; color: var(--text-color); margin: 0;" onclick="cerrarModalBluetooth()">Cancelar Búsqueda</button>
-        </div>
-    </div>
-
-    <div id="custom-export-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1003; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
-        <div style="background: var(--card-color); border: 2px solid var(--accent-color); border-radius: 20px; padding: 25px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-            <div style="font-size: 3rem; margin-bottom: 10px;">💾</div>
-            <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 1.3rem;">Guardar Copia de Seguridad</h3>
-            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 15px;">Elige un nombre identificativo para tu archivo de registro de entrenamientos.</p>
-            <div class="form-group" style="margin-bottom: 20px;">
-                <input type="text" id="custom-csv-name" placeholder="Ej: historial_escalada_mayo">
-            </div>
-            <div class="grid-2">
-                <button class="btn" style="background: #2c2c35; color: var(--text-color); margin: 0;" onclick="cerrarModalExportar()">Cancelar</button>
-                <button class="btn btn-accent" style="margin: 0;" onclick="confirmarExportacionCSV()">Descargar</button>
+        <div id="custom-alert-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1001; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+            <div style="background: var(--card-color); border: 2px solid var(--accent-color); border-radius: 20px; padding: 25px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+                <div id="custom-alert-icon" style="font-size: 3rem; margin-bottom: 10px;">✨</div>
+                <h3 id="custom-alert-title" style="margin: 0 0 10px 0; color: #fff; font-size: 1.3rem;">Notificación</h3>
+                <p id="custom-alert-text" style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.4;"></p>
+                <button class="btn btn-accent" style="margin: 0; width: 100%;" onclick="cerrarAlertaPersonalizada()">Entendido</button>
             </div>
         </div>
     </div>
@@ -358,6 +328,118 @@
             }
         }
 
+        // --- GESTIÓN DE PANTALLA SIEMPRE ENCENDIDA (WAKE LOCK) ---
+        let wakeLock = null;
+        async function activarWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Pantalla bloqueada: No se apagará de forma automática.');
+                } catch (err) {
+                    console.error('Error al intentar mantener pantalla encendida:', err);
+                }
+            }
+        }
+        function desactivarWakeLock() {
+            if (wakeLock !== null) {
+                wakeLock.release().then(() => {
+                    wakeLock = null;
+                    console.log('Bloqueo de pantalla liberado.');
+                });
+            }
+        }
+
+        // --- CONEXIÓN BLUETOOTH REAL ---
+        let bleDevice = null;
+        let bleCharacteristic = null;
+
+        async function conectarBluetooth() {
+            const btnConectar = document.getElementById('btn-conectar-ble');
+            try {
+                hablar("Buscando sensor");
+                console.log("Iniciando escaneo Web Bluetooth...");
+                
+                // Abre el cuadro nativo del móvil aceptando cualquier dispositivo con servicios de datos básicos
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb', '0000181b-0000-1000-8000-00805f9b34fb'] // Servicios comunes de dinamómetros/puertos serie
+                });
+
+                btnConectar.innerText = "⏳ Enlazando...";
+                btnConectar.style.backgroundColor = "var(--warning-color)";
+
+                const server = await bleDevice.gatt.connect();
+                console.log("Conectado al servidor GATT");
+
+                // Buscamos los servicios primarios disponibles
+                const services = await server.getPrimaryServices();
+                if(services.length === 0) throw new Error("No se han encontrado servicios en el sensor.");
+                
+                // Obtenemos las características del primer servicio disponible
+                const characteristics = await services[0].getCharacteristics();
+                if(characteristics.length === 0) throw new Error("No se han encontrado canales de datos.");
+                
+                // Nos suscribimos al canal que notifica los datos de fuerza
+                bleCharacteristic = characteristics[0];
+                await bleCharacteristic.startNotifications();
+                bleCharacteristic.addEventListener('characteristicvaluechanged', procesarDatosFuerzaBluetooth);
+
+                btnConectar.innerText = "🟢 Conectado";
+                btnConectar.style.backgroundColor = "#00c853";
+                hablar("Sensor conectado correctamente");
+
+                // Si se desconecta accidentalmente, reaccionar de inmediato
+                bleDevice.addEventListener('gattserverdisconnected', onBluetoothDesconectado);
+
+            } catch (error) {
+                console.error("Fallo en Bluetooth:", error);
+                btnConectar.innerText = "Conectar";
+                btnConectar.style.backgroundColor = "var(--primary-color)";
+                mostrarAlertaPersonalizada("Error de Conexión", "No se pudo vincular el sensor: " + error.message, "❌");
+            }
+        }
+
+        function onBluetoothDesconectado() {
+            const btnConectar = document.getElementById('btn-conectar-ble');
+            btnConectar.innerText = "Conectar";
+            btnConectar.style.backgroundColor = "var(--primary-color)";
+            hablar("Sensor desconectado");
+            mostrarAlertaPersonalizada("Desconectado", "Se ha perdido la conexión con el dinamómetro.", "⚠️");
+        }
+
+        // Decodificador del flujo de bytes transmitido por el sensor
+        function procesarDatosFuerzaBluetooth(event) {
+            try {
+                const value = event.target.value;
+                let fuerzaRecibida = 0;
+
+                // Intento 1: Decodificar si el sensor envía texto plano (ASCII como '23.4\n')
+                const decoder = new TextDecoder('utf-8');
+                const texto = decoder.decode(value).trim();
+                
+                if (!isNaN(parseFloat(texto))) {
+                    fuerzaRecibida = parseFloat(texto);
+                } else {
+                    // Intento 2: Decodificar si viene en binario crudo (Entero de 16 bits)
+                    fuerzaRecibida = value.getUint16(0, true) / 10; // Suponiendo factor de escala común
+                }
+
+                if(!isNaN(fuerzaRecibida)) {
+                    rawFuerza = fuerzaRecibida;
+                    fuerzaActual = rawFuerza - valorTara;
+                    if(fuerzaActual < 0) fuerzaActual = 0;
+
+                    // Actualizar pantallas en tiempo real
+                    document.getElementById('vivo-fuerza').innerText = fuerzaActual.toFixed(1);
+                    document.getElementById('test-fuerza').innerText = fuerzaActual.toFixed(1);
+                    document.getElementById('train-fuerza').innerText = fuerzaActual.toFixed(1);
+                    document.getElementById('resis-fuerza').innerText = fuerzaActual.toFixed(1);
+                }
+            } catch (e) {
+                console.error("Error al parsear datos del sensor:", e);
+            }
+        }
+
         // --- VARIABLES GLOBALES ---
         let rawFuerza = 0.0; let valorTara = 0.0; let fuerzaActual = 0.0;
         let recordIzq = parseFloat(localStorage.getItem('fuerza_max_izq')) || 0.0;
@@ -382,39 +464,7 @@
             setInterval(actualizarZonasColorDisplay, 100);
         }
 
-        // --- SISTEMA DE ALERTAS Y CONEXIONES ESTÉTICAS REEMPLAZANDO ALERT() ---
-        function mostrarAlertaPersonalizada(titulo, mensaje, icono = "✨") {
-            document.getElementById('custom-alert-title').innerText = titulo;
-            document.getElementById('custom-alert-text').innerText = mensaje;
-            document.getElementById('custom-alert-icon').innerText = icono;
-            const modal = document.getElementById('custom-alert-modal');
-            if (modal) modal.style.display = 'flex';
-        }
-
-        function cerrarAlertaPersonalizada() {
-            const modal = document.getElementById('custom-alert-modal');
-            if (modal) modal.style.display = 'none';
-        }
-
-        function tararSensor() {
-            valorTara = rawFuerza;
-            mostrarAlertaPersonalizada("Sensor Tarado", "Se ha configurado la carga actual (" + valorTara.toFixed(1) + " Kg) como punto cero.", "⚖️");
-        }
-
-        function conectarBluetooth() {
-            const modal = document.getElementById('custom-bluetooth-modal');
-            if(modal) modal.style.display = 'flex';
-        }
-
-        function cerrarModalBluetooth() {
-            const modal = document.getElementById('custom-bluetooth-modal');
-            if(modal) modal.style.display = 'none';
-        }
-
-        function vincularDispositivoSimulado(nombre) {
-            cerrarModalBluetooth();
-            mostrarAlertaPersonalizada("Conexión Establecida", `Vinculado correctamente con el dispositivo: ${nombre}. Listo para medir.`, "✅");
-        }
+        function tararSensor() { valorTara = rawFuerza; alert("Sensor puesto a Cero (" + valorTara.toFixed(1) + " Kg)"); }
 
         function actualizarZonasColorDisplay() {
             const displays = ['display-vivo-node', 'display-test-node', 'display-train-node', 'display-resis-node'];
@@ -464,6 +514,7 @@
             document.getElementById('test-timer').innerText = "LISTO";
             document.getElementById('train-timer').innerText = "LISTO";
             document.getElementById('resis-timer').innerText = "LISTO";
+            desactivarWakeLock();
             calcularKgObjetivo();
         }
 
@@ -512,7 +563,7 @@
             return targetActualKg;
         }
 
-        // --- GESTIÓN DE PLANTILLAS PERSONALIZADAS ---
+        // --- SISTEMA DE PLANTILLAS PERSONALIZADAS ---
         function obtenerPlantillasUsuario() { return JSON.parse(localStorage.getItem('fuerza_plantillas_custom')) || {}; }
         function cargarSelectorPlantillas() {
             const selector = document.getElementById('train-tipo'); const plantillas = obtenerPlantillasUsuario();
@@ -571,109 +622,14 @@
         function eliminarPlantillaUsuario() {
             const selector = document.getElementById('train-tipo'); const tipo = selector.value; if(!tipo.startsWith('custom_')) return;
             const nombre = tipo.replace('custom_', '');
-
-            // Reutilizamos el sistema para eliminar de forma simplificada o alerta
-            const plantillas = obtenerPlantillasUsuario(); delete plantillas[nombre];
-            localStorage.setItem('fuerza_plantillas_custom', JSON.stringify(plantillas));
-            cargarSelectorPlantillas(); selector.value = 'libre'; actualizarPlantillas();
-            mostrarAlertaPersonalizada("Plantilla Eliminada", `La rutina "${nombre}" ha sido borrada con éxito.`, "🗑️");
-        }
-
-        // --- MODAL CONFIRMACIÓN BORRAR HISTORIAL COMPLETO ---
-        function borrarHistorial() {
-            const modal = document.getElementById('custom-confirm-modal');
-            if (modal) modal.style.display = 'flex';
-        }
-
-        function cerrarConfirmarBorrado() {
-            const modal = document.getElementById('custom-confirm-modal');
-            if (modal) modal.style.display = 'none';
-        }
-
-        function confirmarBorradoHistorial() {
-            localStorage.removeItem('fuerza_historial');
-            renderizarHistorial();
-            cerrarConfirmarBorrado();
-            hablar("Historial vaciado por completo");
-            mostrarAlertaPersonalizada("Historial Limpio", "Todos tus registros locales se han eliminado de forma definitiva.", "🗑️");
-        }
-
-        // --- EXPORTAR CSV PERSONALIZADO ---
-        function abrirModalExportar() {
-            let historial = JSON.parse(localStorage.getItem('fuerza_historial')) || [];
-            if(historial.length === 0) {
-                mostrarAlertaPersonalizada("Historial Vacío", "No tienes datos guardados todavía para exportar.", "❌");
-                return;
+            if(confirm(`¿Borrar plantilla "${nombre}"?`)) {
+                const plantillas = obtenerPlantillasUsuario(); delete plantillas[nombre];
+                localStorage.setItem('fuerza_plantillas_custom', JSON.stringify(plantillas));
+                cargarSelectorPlantillas(); selector.value = 'libre'; actualizarPlantillas();
             }
-            document.getElementById('custom-csv-name').value = "historial_escalada_" + new Date().toISOString().slice(0,10);
-            const modal = document.getElementById('custom-export-modal');
-            if (modal) modal.style.display = 'flex';
         }
 
-        function cerrarModalExportar() {
-            const modal = document.getElementById('custom-export-modal');
-            if (modal) modal.style.display = 'none';
-        }
-
-        function confirmarExportacionCSV() {
-            let nombreArchivo = document.getElementById('custom-csv-name').value.trim();
-            if(!nombreArchivo) nombreArchivo = "historial_crimp_lab";
-
-            let historial = JSON.parse(localStorage.getItem('fuerza_historial')) || [];
-            let csvContent = "data:text/csv;charset=utf-8,Fecha,Tipo,Descripcion,Resultado\n";
-            historial.forEach(r => { csvContent += `"${r.fecha}","${r.tipo}","${r.info}","${r.valor}"\n`; });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `${nombreArchivo}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            cerrarModalExportar();
-            mostrarAlertaPersonalizada("Archivo Descargado", `Se ha exportado el archivo "${nombreArchivo}.csv" de forma segura.`, "📥");
-        }
-
-        // --- IMPORTAR COPIA SEGURIDAD CSV ---
-        function importarCSV(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const contenido = e.target.result;
-                const lineas = contenido.split("\n");
-                let historialImportado = [];
-
-                for (let i = 1; i < lineas.length; i++) {
-                    const linea = lineas[i].trim();
-                    if (!linea) continue;
-
-                    const c = linea.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-                    if (c && c.length >= 4) {
-                        const fecha = c[0].replace(/"/g, "");
-                        const tipo = c[1].replace(/"/g, "");
-                        const info = c[2].replace(/"/g, "");
-                        const valor = c[3].replace(/"/g, "");
-                        historialImportado.push({ fecha, tipo, info, valor });
-                    }
-                }
-
-                if (historialImportado.length > 0) {
-                    let historialActual = JSON.parse(localStorage.getItem('fuerza_historial')) || [];
-                    let historialFinal = [...historialImportado, ...historialActual];
-                    localStorage.setItem('fuerza_historial', JSON.stringify(historialFinal));
-                    renderizarHistorial();
-                    mostrarAlertaPersonalizada("Importación Exitosa", `Se han restaurado un total de ${historialImportado.length} sesiones en tu teléfono.`, "📥");
-                } else {
-                    mostrarAlertaPersonalizada("Error de Formato", "El archivo seleccionado no coincide con la cabecera válida de CrimpLab Pro.", "❌");
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        // --- SISTEMA DEL HISTORIAL ---
+        // --- HISTORIAL ---
         function guardarEnHistorial(tipo, info, valor) {
             let historial = JSON.parse(localStorage.getItem('fuerza_historial')) || [];
             const item = {
@@ -703,6 +659,81 @@
             }).join('');
         }
 
+        function mostrarAlertaPersonalizada(titulo, mensaje, icono = "✨") {
+            document.getElementById('custom-alert-title').innerText = titulo;
+            document.getElementById('custom-alert-text').innerText = mensaje;
+            document.getElementById('custom-alert-icon').innerText = icono;
+            const modal = document.getElementById('custom-alert-modal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function cerrarAlertaPersonalizada() {
+            const modal = document.getElementById('custom-alert-modal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function borrarHistorial() {
+            const modal = document.getElementById('custom-confirm-modal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function cerrarConfirmarBorrado() {
+            const modal = document.getElementById('custom-confirm-modal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function confirmarBorradoHistorial() {
+            localStorage.removeItem('fuerza_historial');
+            renderizarHistorial();
+            cerrarConfirmarBorrado();
+            hablar("Historial vaciado por completo");
+        }
+
+        function importarCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const contenido = e.target.result;
+                const lineas = contenido.split("\n");
+                let historialImportado = [];
+
+                for (let i = 1; i < lineas.length; i++) {
+                    const linea = lineas[i].trim();
+                    if (!linea) continue;
+
+                    const c = linea.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                    if (c && c.length >= 4) {
+                        const fecha = c[0].replace(/"/g, "");
+                        const tipo = c[1].replace(/"/g, "");
+                        const info = c[2].replace(/"/g, "");
+                        const valor = c[3].replace(/"/g, "");
+                        historialImportado.push({ fecha, tipo, info, valor });
+                    }
+                }
+
+                if (historialImportado.length > 0) {
+                    let historialActual = JSON.parse(localStorage.getItem('fuerza_historial')) || [];
+                    let historialFinal = [...historialImportado, ...historialActual];
+                    localStorage.setItem('fuerza_historial', JSON.stringify(historialFinal));
+                    renderizarHistorial();
+                    alert(`¡Éxito! Se han restaurado ${historialImportado.length} sesiones en tu nuevo teléfono.`);
+                } else {
+                    alert("El archivo no tiene un formato válido de CrimpLab.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function exportarCSV() {
+            let historial = JSON.parse(localStorage.getItem('fuerza_historial')) || []; if(historial.length === 0) { alert("Historial vacío."); return; }
+            let csvContent = "data:text/csv;charset=utf-8,Fecha,Tipo,Descripcion,Resultado\n";
+            historial.forEach(r => { csvContent += `"${r.fecha}","${r.tipo}","${r.info}","${r.valor}"\n`; });
+            const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "historial_escalada.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+
         function calcularKgObjetivo(manoFuerzaExplicita = null) {
             const porcentaje = parseFloat(document.getElementById('train-porcentaje').value) || 0;
             const targetTxt = document.getElementById('target-kg-txt');
@@ -716,6 +747,7 @@
         // --- TEST DE FUERZA MÁXIMA (PROTOCOLO IRCRA) ---
         function ejecutarTestRutin() {
             pararRutina();
+            activarWakeLock(); // Bloquear apagado de pantalla
             const tTrabajo = parseInt(document.getElementById('test-tiempo').value);
             const tDescanso = parseInt(document.getElementById('test-descanso').value);
             const intentosTotales = parseInt(document.getElementById('test-intentos').value);
@@ -778,15 +810,16 @@
             }, 1000);
         }
 
-        // --- TEST DE RESISTENCIA INTERMITENTE 7:3 AL FALLO ---
+        // --- TEST DE RESISTENCIA INTERMITENTE 7:3 ---
         function ejecutarTestResistencia() {
             pararRutina();
             const modoManos = document.getElementById('resis-mano').value;
 
-            if(modoManos === 'izq' && recordIzq <= 0) { mostrarAlertaPersonalizada("Sin Test Max", "Primero debes realizar un Test Max con la mano izquierda.", "⚠️"); return; }
-            if(modoManos === 'der' && recordDer <= 0) { mostrarAlertaPersonalizada("Sin Test Max", "Primero debes realizar un Test Max con la mano derecha.", "⚠️"); return; }
-            if(modoManos === 'ambas' && (recordIzq <= 0 || recordDer <= 0)) { mostrarAlertaPersonalizada("Faltan Datos", "Necesitas registrar el Test Max de AMBAS manos antes de iniciar este test combinado.", "⚠️"); return; }
+            if(modoManos === 'izq' && recordIzq <= 0) { alert("Primero debes realizar un Test Max con la mano izquierda."); return; }
+            if(modoManos === 'der' && recordDer <= 0) { alert("Primero debes realizar un Test Max con la mano derecha."); return; }
+            if(modoManos === 'ambas' && (recordIzq <= 0 || recordDer <= 0)) { alert("Necesitas registrar el Test Max de AMBAS manos antes de iniciar este test combinado."); return; }
 
+            activarWakeLock(); // Bloquear apagado de pantalla
             let repsCompletadas = 0; let modo = 'COUNTDOWN'; let tiempoRestante = 3; datosGraficaResis = [];
             let fallosCargaSeguidos = 0;
 
@@ -822,7 +855,6 @@
 
                     if(tiempoRestante <= 0) {
                         pitidoFin();
-
                         let ultimosSegundos = datosGraficaResis.slice(-5);
                         let mediaFuerza = ultimosSegundos.reduce((a,b)=>a+b, 0) / (ultimosSegundos.length || 1);
 
@@ -879,6 +911,7 @@
         // --- RUTINA: ENTRENAMIENTO INTELIGENTE ---
         function ejecutarEntrenamientoRutin() {
             pararRutina();
+            activarWakeLock(); // Bloquear apagado de pantalla
             const tWork = parseInt(document.getElementById('train-work').value);
             const tRest = parseInt(document.getElementById('train-rest').value);
             const totalReps = parseInt(document.getElementById('train-reps').value);
@@ -930,13 +963,13 @@
                 else if (modo === 'REST') {
                     let siguienteMano = (modoManos === 'izq') ? "IZQ" : (modoManos === 'der') ? "DER" : (repActual % 2 !== 0) ? "IZQ" : "DER";
                     document.getElementById('train-timer').innerText = `RECUPERA (${repActual-1}/${totalReps}): ${tiempoRestante}s (Prox: ${siguienteMano})`;
-                    if(tiempoRestante <= 0) { modo = 'WORK'; tiempoRestante = tWork; pitidoInicio(); hablar("Aplica carga"); establecerColorEstado('WORK'); }
+                    if(tiempoRestante <= 0) { modo = 'WORK'; tiempoExistente = tWork; pitidoInicio(); hablar("Aplica carga"); establecerColorEstado('WORK'); }
                     tiempoRestante--;
                 }
             }, 1000);
         }
 
-        // --- MODO DEMO GLOBAL ---
+        // --- MODO DEMO ---
         function conmutarDemoGlobal() {
             demoActiva = !demoActiva; const btn = document.getElementById('btn-demo-toggle');
             if(demoActiva) {
