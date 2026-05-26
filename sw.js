@@ -1,6 +1,6 @@
 const CACHE_NAME = 'crimplab-v1';
 const ASSETS = [
-  'dinamometrico.html',
+  'index.html',
   'manifest.json',
   'favicon.png'
 ];
