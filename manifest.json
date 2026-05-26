@@ -2,7 +2,7 @@
   "name": "CrimpLab Pro",
   "short_name": "CrimpLab",
   "description": "Dinamómetro de Escalada de Alta Precisión",
-  "start_url": "dinamometrico.html",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#121214",
   "theme_color": "#121214",
