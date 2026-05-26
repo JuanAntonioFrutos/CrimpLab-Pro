@@ -84,6 +84,10 @@
         .graph-container { background-color: #121214; border-radius: 10px; margin: 12px 0; overflow: hidden; border: 1px solid var(--border-color); }
         canvas { display: block; width: 100%; height: 120px; }
 
+        .legend-historial { display: flex; justify-content: space-around; font-size: 0.75rem; margin-bottom: 10px; background: #121214; padding: 6px; border-radius: 6px; }
+        .legend-item { display: flex; align-items: center; gap: 4px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
         .btn { display: block; width: 100%; padding: 12px; border: none; border-radius: 10px; font-size: 0.95rem; font-weight: bold; cursor: pointer; transition: all 0.2s; margin-top: 8px; }
         .btn-primary { background-color: var(--primary-color); color: #000; }
         .btn-accent { background-color: var(--accent-color); color: #000; }
@@ -265,7 +269,15 @@
         </div>
 
         <div id="tab-historial" class="tab-content">
-            <h2>Historial de Sesiones</h2>
+            <h2>Historial y Evolución</h2>
+            
+            <div class="legend-historial">
+                <div class="legend-item"><span class="dot" style="background:var(--accent-color)"></span> Test Max (Kg)</div>
+                <div class="legend-item"><span class="dot" style="background:var(--warning-color)"></span> Resis (Reps)</div>
+                <div class="legend-item"><span class="dot" style="background:var(--primary-color)"></span> Entreno (Reps)</div>
+            </div>
+            <div class="graph-container" style="height:150px;"><canvas id="canvas-historial-evolucion" width="440" height="150"></canvas></div>
+
             <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
                 <div class="grid-2">
                     <button class="btn btn-accent" style="padding: 10px 5px; font-size:0.85rem; margin:0;" onclick="exportarCSV()">📤 Exportar CSV</button>
@@ -283,7 +295,7 @@
             <div style="background: var(--card-color); border: 2px solid var(--danger-color); border-radius: 20px; padding: 25px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
                 <div style="font-size: 3rem; margin-bottom: 10px;">⚠️</div>
                 <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 1.3rem;">¿Vaciar historial por completo?</h3>
-                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.4;">Esta acción borrará de forma permanente todas tus sesiones y récords guardados localmente. No se puede deshacer.</p>
+                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.4;">Esta acción borrará de forma permanente todas tus sesiones y récords guardados localmente.</p>
                 <div class="grid-2">
                     <button class="btn" style="background: #2c2c35; color: var(--text-color); margin: 0;" onclick="cerrarConfirmarBorrado()">Cancelar</button>
                     <button class="btn btn-danger" style="margin: 0;" onclick="confirmarBorradoHistorial()">Sí, Borrar todo</button>
@@ -328,28 +340,22 @@
             }
         }
 
-        // --- GESTIÓN DE PANTALLA SIEMPRE ENCENDIDA (WAKE LOCK) ---
+        // --- ANTI-APAGADO DE PANTALLA ---
         let wakeLock = null;
         async function activarWakeLock() {
             if ('wakeLock' in navigator) {
                 try {
                     wakeLock = await navigator.wakeLock.request('screen');
-                    console.log('Pantalla bloqueada: No se apagará de forma automática.');
-                } catch (err) {
-                    console.error('Error al intentar mantener pantalla encendida:', err);
-                }
+                } catch (err) { console.error(err); }
             }
         }
         function desactivarWakeLock() {
             if (wakeLock !== null) {
-                wakeLock.release().then(() => {
-                    wakeLock = null;
-                    console.log('Bloqueo de pantalla liberado.');
-                });
+                wakeLock.release().then(() => { wakeLock = null; });
             }
         }
 
-        // --- CONEXIÓN BLUETOOTH REAL ---
+        // --- CONEXIÓN BLUETOOTH ROBUSTA (DESBLOQUEADA) ---
         let bleDevice = null;
         let bleCharacteristic = null;
 
@@ -357,45 +363,44 @@
             const btnConectar = document.getElementById('btn-conectar-ble');
             try {
                 hablar("Buscando sensor");
-                console.log("Iniciando escaneo Web Bluetooth...");
                 
-                // Abre el cuadro nativo del móvil aceptando cualquier dispositivo con servicios de datos básicos
+                // Desbloqueo amplio de servicios comunes de básculas, dinamómetros y puertos serie Bluetooth LE
                 bleDevice = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
-                    optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb', '0000181b-0000-1000-8000-00805f9b34fb'] // Servicios comunes de dinamómetros/puertos serie
+                    optionalServices: [
+                        '0000ffe0-0000-1000-8000-00805f9b34fb', // Perfil HM-10 / CC2541 común
+                        '0000181b-0000-1000-8000-00805f9b34fb', // Servicio de composición corporal / peso estándar
+                        '0000181d-0000-1000-8000-00805f9b34fb', // Servicio Weight Scale genérico
+                        '6e400001-b5a3-f393-e0a9-e50e24dcca9e', // Puerto Serie Nórdico (UART) muy usado en escalada
+                        '0000fff0-0000-1000-8000-00805f9b34fb'  // Perfil alternativo de datos genéricos
+                    ]
                 });
 
                 btnConectar.innerText = "⏳ Enlazando...";
                 btnConectar.style.backgroundColor = "var(--warning-color)";
 
                 const server = await bleDevice.gatt.connect();
-                console.log("Conectado al servidor GATT");
-
-                // Buscamos los servicios primarios disponibles
                 const services = await server.getPrimaryServices();
-                if(services.length === 0) throw new Error("No se han encontrado servicios en el sensor.");
+                if(services.length === 0) throw new Error("Falta canal primario.");
                 
-                // Obtenemos las características del primer servicio disponible
                 const characteristics = await services[0].getCharacteristics();
-                if(characteristics.length === 0) throw new Error("No se han encontrado canales de datos.");
+                if(characteristics.length === 0) throw new Error("Falta canal de lectura.");
                 
-                // Nos suscribimos al canal que notifica los datos de fuerza
                 bleCharacteristic = characteristics[0];
                 await bleCharacteristic.startNotifications();
                 bleCharacteristic.addEventListener('characteristicvaluechanged', procesarDatosFuerzaBluetooth);
 
                 btnConectar.innerText = "🟢 Conectado";
                 btnConectar.style.backgroundColor = "#00c853";
-                hablar("Sensor conectado correctamente");
+                hablar("Sensor conectado");
 
-                // Si se desconecta accidentalmente, reaccionar de inmediato
                 bleDevice.addEventListener('gattserverdisconnected', onBluetoothDesconectado);
 
             } catch (error) {
-                console.error("Fallo en Bluetooth:", error);
+                console.error(error);
                 btnConectar.innerText = "Conectar";
                 btnConectar.style.backgroundColor = "var(--primary-color)";
-                mostrarAlertaPersonalizada("Error de Conexión", "No se pudo vincular el sensor: " + error.message, "❌");
+                mostrarAlertaPersonalizada("Error de Conexión", "Asegúrate de que el sensor no esté vinculado en los ajustes generales de tu móvil. Detalle: " + error.message, "❌");
             }
         }
 
@@ -407,21 +412,18 @@
             mostrarAlertaPersonalizada("Desconectado", "Se ha perdido la conexión con el dinamómetro.", "⚠️");
         }
 
-        // Decodificador del flujo de bytes transmitido por el sensor
         function procesarDatosFuerzaBluetooth(event) {
             try {
                 const value = event.target.value;
                 let fuerzaRecibida = 0;
 
-                // Intento 1: Decodificar si el sensor envía texto plano (ASCII como '23.4\n')
                 const decoder = new TextDecoder('utf-8');
                 const texto = decoder.decode(value).trim();
                 
                 if (!isNaN(parseFloat(texto))) {
                     fuerzaRecibida = parseFloat(texto);
                 } else {
-                    // Intento 2: Decodificar si viene en binario crudo (Entero de 16 bits)
-                    fuerzaRecibida = value.getUint16(0, true) / 10; // Suponiendo factor de escala común
+                    fuerzaRecibida = value.getUint16(0, true) / 10;
                 }
 
                 if(!isNaN(fuerzaRecibida)) {
@@ -429,15 +431,12 @@
                     fuerzaActual = rawFuerza - valorTara;
                     if(fuerzaActual < 0) fuerzaActual = 0;
 
-                    // Actualizar pantallas en tiempo real
                     document.getElementById('vivo-fuerza').innerText = fuerzaActual.toFixed(1);
                     document.getElementById('test-fuerza').innerText = fuerzaActual.toFixed(1);
                     document.getElementById('train-fuerza').innerText = fuerzaActual.toFixed(1);
                     document.getElementById('resis-fuerza').innerText = fuerzaActual.toFixed(1);
                 }
-            } catch (e) {
-                console.error("Error al parsear datos del sensor:", e);
-            }
+            } catch (e) { console.error(e); }
         }
 
         // --- VARIABLES GLOBALES ---
@@ -448,7 +447,6 @@
         let datosGraficaTest = []; let datosGraficaTrain = []; let datosGraficaResis = [];
         let targetActualKg = 0;
         const containerNode = document.getElementById('main-container');
-
         const TOLERANCIA_KG = 1.5;
 
         window.onload = function() {
@@ -460,11 +458,10 @@
             calcularKgObjetivo();
             calcularTargetResistencia();
             dibujarGraficaLinea('canvas-test', []); dibujarGraficaLinea('canvas-train', []); dibujarGraficaLinea('canvas-resis', []);
-            renderizarHistorial();
             setInterval(actualizarZonasColorDisplay, 100);
         }
 
-        function tararSensor() { valorTara = rawFuerza; alert("Sensor puesto a Cero (" + valorTara.toFixed(1) + " Kg)"); }
+        function tararSensor() { valorTara = rawFuerza; alert("Puesto a Cero"); }
 
         function actualizarZonasColorDisplay() {
             const displays = ['display-vivo-node', 'display-test-node', 'display-train-node', 'display-resis-node'];
@@ -482,10 +479,8 @@
         function actualizarUI_Records() {
             const peso = parseFloat(document.getElementById('global-peso').value) || 1;
             localStorage.setItem('escalador_peso', peso);
-
             document.getElementById('record-izq-txt').innerText = recordIzq.toFixed(1) + " Kg";
             document.getElementById('record-der-txt').innerText = recordDer.toFixed(1) + " Kg";
-
             document.getElementById('ratio-izq-txt').innerText = (recordIzq / peso).toFixed(2) + " xPeso";
             document.getElementById('ratio-der-txt').innerText = (recordDer / peso).toFixed(2) + " xPeso";
         }
@@ -495,7 +490,7 @@
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             event.target.classList.add('active'); document.getElementById(pestanaId).classList.add('active');
             pararRutina();
-            if(pestanaId === 'tab-historial') renderizarHistorial();
+            if(pestanaId === 'tab-historial') { renderizarHistorial(); dibujarGraficaHistorialEvolutiva(); }
             if(pestanaId === 'tab-resistencia') calcularTargetResistencia();
         }
 
@@ -524,21 +519,17 @@
             ctx.clearRect(0, 0, w, h);
             ctx.strokeStyle = '#222226'; ctx.lineWidth = 1;
             for(let i = 20; i < h; i += 30) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(w, i); ctx.stroke(); }
-
             let maxPunto = Math.max(...puntos, 40, targetActualKg + 10);
-
             if ((canvasId === 'canvas-train' || canvasId === 'canvas-resis') && targetActualKg > 0) {
                 let yTarget = h - ((targetActualKg / maxPunto) * (h - 20)) - 10;
                 ctx.strokeStyle = 'rgba(255, 145, 0, 0.6)'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
                 ctx.beginPath(); ctx.moveTo(0, yTarget); ctx.lineTo(w, yTarget); ctx.stroke(); ctx.setLineDash([]);
             }
-
             if(puntos.length < 2) return;
             ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.beginPath();
             if(canvasId.includes('test')) ctx.strokeStyle = '#29b6f6';
             else if(canvasId.includes('resis')) ctx.strokeStyle = '#ff9100';
             else ctx.strokeStyle = '#00e676';
-
             for(let i = 0; i < puntos.length; i++) {
                 let x = (i / (puntos.length - 1)) * w;
                 let y = h - ((puntos.length === 1 ? 0 : puntos[i] / maxPunto) * (h - 20)) - 10;
@@ -547,14 +538,70 @@
             ctx.stroke();
         }
 
+        // --- NUEVA FUNCIÓN: DIBUJAR GRÁFICA TRIPLE EVOLUTIVA EN HISTORIAL ---
+        function dibujarGraficaHistorialEvolutiva() {
+            const canvas = document.getElementById('canvas-historial-evolucion'); if (!canvas) return;
+            const ctx = canvas.getContext('2d'); const w = canvas.width; const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            // Rejilla de fondo
+            ctx.strokeStyle = '#222226'; ctx.lineWidth = 1;
+            for(let i = 20; i < h; i += 30) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(w, i); ctx.stroke(); }
+
+            let historial = JSON.parse(localStorage.getItem('fuerza_historial')) || [];
+            if(historial.length === 0) return;
+
+            // Procesar datos al revés (de más antiguo a más nuevo para la línea de tiempo)
+            let cronologia = [...historial].reverse();
+
+            let puntosTest = []; let puntosResis = []; let puntosTrain = [];
+
+            cronologia.forEach(item => {
+                let numero = parseFloat(item.valor);
+                if (isNaN(numero)) return;
+                if (item.tipo === 'test') puntosTest.push(numero);
+                if (item.tipo === 'resistencia') puntosResis.push(numero);
+                if (item.tipo === 'train') puntosTrain.push(numero);
+            });
+
+            let todosLosValores = [...puntosTest, ...puntosResis, ...puntosTrain];
+            let valorMaximoAbsoluto = Math.max(...todosLosValores, 15);
+
+            // Función interna para trazar cada línea individual
+            function trazarLineaEvolutiva(puntos, color) {
+                if (puntos.length < 1) return;
+                ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.beginPath();
+                
+                for (let i = 0; i < puntos.length; i++) {
+                    // Distribución horizontal proporcional
+                    let x = puntos.length === 1 ? w / 2 : (i / (puntos.length - 1)) * (w - 30) + 15;
+                    let y = h - ((puntos[i] / valorMaximoAbsoluto) * (h - 30)) - 15;
+                    
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+
+                // Dibujar pequeños nodos/puntos en cada sesión
+                ctx.fillStyle = color;
+                for (let i = 0; i < puntos.length; i++) {
+                    let x = puntos.length === 1 ? w / 2 : (i / (puntos.length - 1)) * (w - 30) + 15;
+                    let y = h - ((puntos[i] / valorMaximoAbsoluto) * (h - 30)) - 15;
+                    ctx.beginPath(); ctx.arc(x, y, 4, 0, 2 * Math.PI); ctx.fill();
+                }
+            }
+
+            // Dibujar las 3 líneas evolutivas
+            trazarLineaEvolutiva(puntosTest, '#29b6f6');      // Azul para Test Fuerza
+            trazarLineaEvolutiva(puntosResis, '#ff9100');     // Naranja para Resistencia
+            trazarLineaEvolutiva(puntosTrain, '#00e676');     // Verde para Entrenamiento
+        }
+
         function calcularTargetResistencia(manoExplicita = null) {
             const selectorMano = manoExplicita || document.getElementById('resis-mano').value;
             let manoReferencia = selectorMano;
             if(selectorMano === 'ambas') manoReferencia = (recordIzq >= recordDer) ? 'izq' : 'der';
-
             const recordReferencia = (manoReferencia === 'izq') ? recordIzq : recordDer;
             targetActualKg = parseFloat((recordReferencia * 0.6).toFixed(1));
-
             if(selectorMano === 'ambas') {
                 document.getElementById('resis-target-txt').innerText = `Alt (I:${(recordIzq*0.6).toFixed(1)} / D:${(recordDer*0.6).toFixed(1)})`;
             } else {
@@ -563,7 +610,6 @@
             return targetActualKg;
         }
 
-        // --- SISTEMA DE PLANTILLAS PERSONALIZADAS ---
         function obtenerPlantillasUsuario() { return JSON.parse(localStorage.getItem('fuerza_plantillas_custom')) || {}; }
         function cargarSelectorPlantillas() {
             const selector = document.getElementById('train-tipo'); const plantillas = obtenerPlantillasUsuario();
@@ -599,10 +645,7 @@
 
         function guardarPlantillaUsuario() {
             const nombre = document.getElementById('custom-template-name').value.trim();
-            if(!nombre) {
-                mostrarAlertaPersonalizada("Atención", "Por favor, introduce un nombre para la plantilla.", "⚠️");
-                return;
-            }
+            if(!nombre) return;
             const plantillas = obtenerPlantillasUsuario();
             plantillas[nombre] = {
                 porcentaje: parseInt(document.getElementById('train-porcentaje').value),
@@ -613,10 +656,7 @@
             };
             localStorage.setItem('fuerza_plantillas_custom', JSON.stringify(plantillas));
             document.getElementById('custom-template-name').value = "";
-            cargarSelectorPlantillas();
-            document.getElementById('train-tipo').value = `custom_${nombre}`;
-            actualizarPlantillas();
-            mostrarAlertaPersonalizada("¡Guardado!", `La plantilla "${nombre}" se ha configurado correctamente.`, "💾");
+            cargarSelectorPlantillas(); document.getElementById('train-tipo').value = `custom_${nombre}`; actualizarPlantillas();
         }
 
         function eliminarPlantillaUsuario() {
@@ -629,7 +669,6 @@
             }
         }
 
-        // --- HISTORIAL ---
         function guardarEnHistorial(tipo, info, valor) {
             let historial = JSON.parse(localStorage.getItem('fuerza_historial')) || [];
             const item = {
@@ -637,11 +676,12 @@
                 tipo: tipo, info: info, valor: valor
             };
             historial.unshift(item); localStorage.setItem('fuerza_historial', JSON.stringify(historial));
+            dibujarGraficaHistorialEvolutiva(); // Recargar gráfica tras añadir sesión
         }
 
         function renderizarHistorial() {
             const lista = document.getElementById('lista-historial'); let historial = JSON.parse(localStorage.getItem('fuerza_historial')) || [];
-            if(historial.length === 0) { lista.innerHTML = "<div style='color:var(--text-secondary); text-align:center; padding:20px;'>No hay sesiones registradas.</div>"; return; }
+            if(historial.length === 0) { lista.innerHTML = "<div style='color:var(--text-secondary); text-align:center; padding:20px;'>No hay sesiones.</div>"; return; }
             lista.innerHTML = historial.map(item => {
                 let diagHtml = "";
                 if(item.tipo === 'resistencia') {
@@ -663,71 +703,41 @@
             document.getElementById('custom-alert-title').innerText = titulo;
             document.getElementById('custom-alert-text').innerText = mensaje;
             document.getElementById('custom-alert-icon').innerText = icono;
-            const modal = document.getElementById('custom-alert-modal');
-            if (modal) modal.style.display = 'flex';
+            document.getElementById('custom-alert-modal').style.display = 'flex';
         }
-
-        function cerrarAlertaPersonalizada() {
-            const modal = document.getElementById('custom-alert-modal');
-            if (modal) modal.style.display = 'none';
-        }
-
-        function borrarHistorial() {
-            const modal = document.getElementById('custom-confirm-modal');
-            if (modal) modal.style.display = 'flex';
-        }
-
-        function cerrarConfirmarBorrado() {
-            const modal = document.getElementById('custom-confirm-modal');
-            if (modal) modal.style.display = 'none';
-        }
-
+        function cerrarAlertaPersonalizada() { document.getElementById('custom-alert-modal').style.display = 'none'; }
+        function borrarHistorial() { document.getElementById('custom-confirm-modal').style.display = 'flex'; }
+        function cerrarConfirmarBorrado() { document.getElementById('custom-confirm-modal').style.display = 'none'; }
+        
         function confirmarBorradoHistorial() {
             localStorage.removeItem('fuerza_historial');
-            renderizarHistorial();
-            cerrarConfirmarBorrado();
-            hablar("Historial vaciado por completo");
+            renderizarHistorial(); dibujarGraficaHistorialEvolutiva();
+            cerrarConfirmarBorrado(); hablar("Historial vaciado");
         }
 
         function importarCSV(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
+            const file = event.target.files[0]; if (!file) return;
             const reader = new FileReader();
             reader.onload = function(e) {
-                const contenido = e.target.result;
-                const lineas = contenido.split("\n");
-                let historialImportado = [];
-
+                const contenido = e.target.result; const lineas = contenido.split("\n"); let historialImportado = [];
                 for (let i = 1; i < lineas.length; i++) {
-                    const linea = lineas[i].trim();
-                    if (!linea) continue;
-
+                    const linea = lineas[i].trim(); if (!linea) continue;
                     const c = linea.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
                     if (c && c.length >= 4) {
-                        const fecha = c[0].replace(/"/g, "");
-                        const tipo = c[1].replace(/"/g, "");
-                        const info = c[2].replace(/"/g, "");
-                        const valor = c[3].replace(/"/g, "");
-                        historialImportado.push({ fecha, tipo, info, valor });
+                        historialImportado.push({ fecha: c[0].replace(/"/g, ""), tipo: c[1].replace(/"/g, ""), info: c[2].replace(/"/g, ""), valor: c[3].replace(/"/g, "") });
                     }
                 }
-
                 if (historialImportado.length > 0) {
                     let historialActual = JSON.parse(localStorage.getItem('fuerza_historial')) || [];
-                    let historialFinal = [...historialImportado, ...historialActual];
-                    localStorage.setItem('fuerza_historial', JSON.stringify(historialFinal));
-                    renderizarHistorial();
-                    alert(`¡Éxito! Se han restaurado ${historialImportado.length} sesiones en tu nuevo teléfono.`);
-                } else {
-                    alert("El archivo no tiene un formato válido de CrimpLab.");
+                    localStorage.setItem('fuerza_historial', JSON.stringify([...historialImportado, ...historialActual]));
+                    renderizarHistorial(); dibujarGraficaHistorialEvolutiva();
                 }
             };
             reader.readAsText(file);
         }
 
         function exportarCSV() {
-            let historial = JSON.parse(localStorage.getItem('fuerza_historial')) || []; if(historial.length === 0) { alert("Historial vacío."); return; }
+            let historial = JSON.parse(localStorage.getItem('fuerza_historial')) || []; if(historial.length === 0) return;
             let csvContent = "data:text/csv;charset=utf-8,Fecha,Tipo,Descripcion,Resultado\n";
             historial.forEach(r => { csvContent += `"${r.fecha}","${r.tipo}","${r.info}","${r.valor}"\n`; });
             const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri);
@@ -739,15 +749,13 @@
             const targetTxt = document.getElementById('target-kg-txt');
             let mano = manoFuerzaExplicita || document.getElementById('train-manos').value;
             let recordReferencia = (mano === 'izq') ? recordIzq : (mano === 'der') ? recordDer : Math.max(recordIzq, recordDer);
-
-            if (recordReferencia === 0) { targetTxt.innerText = "Haz test " + (mano !== 'ambas' ? mano.toUpperCase() : ""); targetActualKg = 0; return 0; }
+            if (recordReferencia === 0) { targetTxt.innerText = "Haz test"; targetActualKg = 0; return 0; }
             else { targetActualKg = parseFloat(((recordReferencia * porcentaje) / 100).toFixed(1)); targetTxt.innerText = `${targetActualKg} Kg (${mano.toUpperCase()})`; return targetActualKg; }
         }
 
-        // --- TEST DE FUERZA MÁXIMA (PROTOCOLO IRCRA) ---
+        // --- PROTOCOLO IRCRA FUERZA MAX ---
         function ejecutarTestRutin() {
-            pararRutina();
-            activarWakeLock(); // Bloquear apagado de pantalla
+            pararRutina(); activarWakeLock();
             const tTrabajo = parseInt(document.getElementById('test-tiempo').value);
             const tDescanso = parseInt(document.getElementById('test-descanso').value);
             const intentosTotales = parseInt(document.getElementById('test-intentos').value);
@@ -756,24 +764,17 @@
 
             let intentoActual = 1; let modo = 'COUNTDOWN'; let tiempoRestante = 3; let peakFuerzaIntento = 0;
             let maxPicosSesion = { izq: 0, der: 0 }; datosGraficaTest = [];
-
             establecerColorEstado('PREP'); hablar("Prepararse para test de fuerza");
 
             rutinaInterval = setInterval(() => {
                 let manoTexto = (modoManos === 'izq') ? "IZQ" : (modoManos === 'der') ? "DER" : (intentoActual % 2 !== 0) ? "IZQ" : "DER";
-
                 if (modo === 'COUNTDOWN') {
                     document.getElementById('test-timer').innerText = `[${manoTexto}] ¡PREPARA! ${tiempoRestante}`;
-                    if(tiempoRestante <= 0) {
-                        modo = 'WORK'; tiempoRestante = tTrabajo; pitidoInicio();
-                        hablar("Rampa inicial... ¡tira progresivo!");
-                        establecerColorEstado('WORK'); datosGraficaTest = [];
-                    }
+                    if(tiempoRestante <= 0) { modo = 'WORK'; tiempoRestante = tTrabajo; pitidoInicio(); hablar("¡Tira!"); establecerColorEstado('WORK'); datosGraficaTest = []; }
                 }
                 else if (modo === 'WORK') {
                     document.getElementById('test-timer').innerText = `[${manoTexto}] ¡MÁXIMA TRACCIÓN! - ${tiempoRestante}s`;
                     datosGraficaTest.push(fuerzaActual); dibujarGraficaLinea('canvas-test', datosGraficaTest);
-
                     if(fuerzaActual > peakFuerzaIntento) peakFuerzaIntento = fuerzaActual;
 
                     if(tiempoRestante <= 0) {
@@ -786,186 +787,115 @@
 
                         if (intentoActual < intentosTotales) {
                             modo = 'REST'; tiempoRestante = tDescanso; establecerColorEstado('REST'); peakFuerzaIntento = 0;
-                            let proxMano = (modoManos === 'izq') ? "IZQ" : (modoManos === 'der') ? "DER" : ((intentoActual + 1) % 2 !== 0) ? "IZQ" : "DER";
-                            hablar("Descanso completo IRCRA. Siguiente mano " + (proxMano === 'IZQ' ? 'izquierda' : 'derecha'));
                         } else {
-                            clearInterval(rutinaInterval); rutinaInterval = null; pararRutina();
-                            document.getElementById('test-timer').innerText = "TEST TERMINADO"; hablar("Test completado");
-
-                            let resTxt = (modoManos==='izq') ? `${maxPicosSesion.izq.toFixed(1)} Kg (${(maxPicosSesion.izq/peso).toFixed(2)} xPeso)` :
-                                         (modoManos==='der') ? `${maxPicosSesion.der.toFixed(1) } Kg (${(maxPicosSesion.der/peso).toFixed(2)} xPeso)` :
-                                         `I:${maxPicosSesion.izq.toFixed(1)}K (${(maxPicosSesion.izq/peso).toFixed(2)}x) | D:${maxPicosSesion.der.toFixed(1)}K (${(maxPicosSesion.der/peso).toFixed(2)}x)`;
-                            guardarEnHistorial('test', `${intentosTotales} intentos IRCRA`, resTxt);
+                            pararRutina(); document.getElementById('test-timer').innerText = "TEST TERMINADO"; hablar("Test completado");
+                            let resVal = (modoManos==='izq') ? maxPicosSesion.izq : (modoManos==='der') ? maxPicosSesion.der : Math.max(maxPicosSesion.izq, maxPicosSesion.der);
+                            guardarEnHistorial('test', `${intentosTotales} int. IRCRA (${modoManos.toUpperCase()})`, `${resVal.toFixed(1)} Kg`);
                         }
                         intentoActual++;
                     }
                 }
                 else if (modo === 'REST') {
-                    let min = Math.floor(tiempoRestante / 60); let seg = tiempoRestante % 60;
-                    let siguienteMano = (modoManos === 'izq') ? "IZQ" : (modoManos === 'der') ? "DER" : (intentoActual % 2 !== 0) ? "IZQ" : "DER";
-                    document.getElementById('test-timer').innerText = `DESCANSO RECUPERACIÓN: ${min}:${seg < 10 ? '0':''}${seg} (Prox: ${siguienteMano})`;
-                    if(tiempoRestante <= 0) { modo = 'WORK'; tiempoRestante = tTrabajo; pitidoInicio(); hablar("Aplica carga progresiva"); establecerColorEstado('WORK'); }
+                    document.getElementById('test-timer').innerText = `DESCANSO: ${tiempoRestante}s`;
+                    if(tiempoRestante <= 0) { modo = 'WORK'; tiempoRestante = tTrabajo; pitidoInicio(); establecerColorEstado('WORK'); }
                 }
                 tiempoRestante--;
             }, 1000);
         }
 
-        // --- TEST DE RESISTENCIA INTERMITENTE 7:3 ---
+        // --- TEST RESISTENCIA 7:3 ---
         function ejecutarTestResistencia() {
-            pararRutina();
-            const modoManos = document.getElementById('resis-mano').value;
-
-            if(modoManos === 'izq' && recordIzq <= 0) { alert("Primero debes realizar un Test Max con la mano izquierda."); return; }
-            if(modoManos === 'der' && recordDer <= 0) { alert("Primero debes realizar un Test Max con la mano derecha."); return; }
-            if(modoManos === 'ambas' && (recordIzq <= 0 || recordDer <= 0)) { alert("Necesitas registrar el Test Max de AMBAS manos antes de iniciar este test combinado."); return; }
-
-            activarWakeLock(); // Bloquear apagado de pantalla
-            let repsCompletadas = 0; let modo = 'COUNTDOWN'; let tiempoRestante = 3; datosGraficaResis = [];
-            let fallosCargaSeguidos = 0;
-
-            establecerColorEstado('PREP');
-            hablar("Iniciando test de resistencia intermitente al sesenta por ciento");
+            pararRutina(); const modoManos = document.getElementById('resis-mano').value;
+            if(modoManos === 'izq' && recordIzq <= 0) return;
+            if(modoManos === 'der' && recordDer <= 0) return;
+            activarWakeLock();
+            let repsCompletadas = 0; let modo = 'COUNTDOWN'; let tiempoRestante = 3; datosGraficaResis = []; let fallosCargaSeguidos = 0;
+            establecerColorEstado('PREP'); hablar("Iniciando test de resistencia");
 
             rutinaInterval = setInterval(() => {
-                let manoActual = modoManos;
-                if(modoManos === 'ambas') {
-                    manoActual = (repsCompletadas % 2 === 0) ? 'izq' : 'der';
-                }
-
+                let manoActual = (modoManos === 'ambas') ? ((repsCompletadas % 2 === 0) ? 'izq' : 'der') : modoManos;
                 let targetKg = parseFloat(((manoActual === 'izq' ? recordIzq : recordDer) * 0.6).toFixed(1));
                 targetActualKg = targetKg;
 
                 if (modo === 'COUNTDOWN') {
-                    let proximaManoTexto = (modoManos === 'ambas') ? "IZQUIERDA" : modoManos.toUpperCase();
-                    document.getElementById('resis-timer').innerText = `¡PREPARA MANO ${proximaManoTexto}! ${tiempoRestante}`;
-                    if(tiempoRestante <= 0) {
-                        modo = 'WORK'; tiempoRestante = 7; pitidoInicio();
-                        hablar("Tira " + (proximaManoTexto === "IZQUIERDA" ? "izquierda" : "derecha"));
-                        establecerColorEstado('WORK');
-                    }
-                    tiempoRestante--;
+                    document.getElementById('resis-timer').innerText = `¡PREPARA MANO ${manoActual.toUpperCase()}! ${tiempoRestante}`;
+                    if(tiempoRestante <= 0) { modo = 'WORK'; tiempoRestante = 7; pitidoInicio(); establecerColorEstado('WORK'); }
                 }
                 else if (modo === 'WORK') {
-                    let manoTextoBanner = manoActual.toUpperCase();
-                    document.getElementById('resis-timer').innerText = `💪 REP ${repsCompletadas + 1} [${manoTextoBanner}] - MANTÉN ${targetKg} Kg: ${tiempoRestante}s`;
+                    document.getElementById('resis-timer').innerText = `💪 REP ${repsCompletadas + 1} - MANTÉN ${targetKg} Kg: ${tiempoRestante}s`;
                     datosGraficaResis.push(fuerzaActual); dibujarGraficaLinea('canvas-resis', datosGraficaResis);
 
-                    let cargaSuficiente = fuerzaActual >= (targetKg - TOLERANCIA_KG);
-                    if(!cargaSuficiente) establecerColorEstado('PAUSED'); else establecerColorEstado('WORK');
+                    if(fuerzaActual < (targetKg - TOLERANCIA_KG)) establecerColorEstado('PAUSED'); else establecerColorEstado('WORK');
 
                     if(tiempoRestante <= 0) {
                         pitidoFin();
-                        let ultimosSegundos = datosGraficaResis.slice(-5);
-                        let mediaFuerza = ultimosSegundos.reduce((a,b)=>a+b, 0) / (ultimosSegundos.length || 1);
-
-                        if(mediaFuerza < (targetKg - TOLERANCIA_KG)) {
-                            fallosCargaSeguidos++;
-                            hablar("Carga insuficiente");
-                        } else {
-                            fallosCargaSeguidos = 0;
-                        }
+                        let mediaFuerza = datosGraficaResis.slice(-5).reduce((a,b)=>a+b, 0) / 5;
+                        if(mediaFuerza < (targetKg - TOLERANCIA_KG)) fallosCargaSeguidos++; else fallosCargaSeguidos = 0;
 
                         if(fallosCargaSeguidos >= 2) {
-                            finalizarTestResistencia(repsCompletadas, "Fallo por fatiga acumulada", modoManos);
+                            pararRutina(); document.getElementById('resis-timer').innerText = "FIN FATIGA";
+                            let clasif = repsCompletadas < 10 ? "Baja Pila" : repsCompletadas <= 18 ? "Óptimo" : "Motor Brutal";
+                            guardarEnHistorial('resistencia', `Test 7:3 60% (${modoManos.toUpperCase()})`, `${repsCompletadas} Reps [${clasif}]`);
                             return;
                         }
-
-                        repsCompletadas++;
-                        modo = 'REST'; tiempoRestante = 3; establecerColorEstado('REST');
-
-                        if(modoManos === 'ambas') {
-                            let proximaMano = (repsCompletadas % 2 === 0) ? "izquierda" : "derecha";
-                            hablar("Suelta. Siguiente mano " + proximaMano);
-                        } else {
-                            hablar("Suelta");
-                        }
+                        repsCompletadas++; modo = 'REST'; tiempoRestante = 3; establecerColorEstado('REST');
                     }
-                    tiempoRestante--;
                 }
                 else if (modo === 'REST') {
-                    let proximaManoTexto = modoManos;
-                    if(modoManos === 'ambas') proximaManoTexto = (repsCompletadas % 2 === 0) ? 'izq' : 'der';
-
-                    document.getElementById('resis-timer').innerText = `SUELTA Y RECUPERA: ${tiempoRestante}s (Prox: ${proximaManoTexto.toUpperCase()})`;
-                    if(tiempoRestante <= 0) {
-                        modo = 'WORK'; tiempoRestante = 7; datosGraficaResis = []; pitidoInicio(); establecerColorEstado('WORK');
-                    }
-                    tiempoRestante--;
+                    document.getElementById('resis-timer').innerText = `SUELTA: ${tiempoRestante}s`;
+                    if(tiempoRestante <= 0) { modo = 'WORK'; tiempoRestante = 7; datosGraficaResis = []; pitidoInicio(); establecerColorEstado('WORK'); }
                 }
+                tiempoRestante--;
             }, 1000);
         }
 
-        function finalizarTestResistencia(reps, motivo, mano) {
-            clearInterval(rutinaInterval); rutinaInterval = null; pararRutina();
-
-            let clasificacion = "";
-            if(reps < 10) clasificacion = "Baja Pila";
-            else if(reps >= 12 && reps <= 18) clasificacion = "Óptimo";
-            else clasificacion = "Motor Brutal";
-
-            document.getElementById('resis-timer').innerText = "TEST FINALIZADO";
-            hablar(`Test terminado. Completaste ${reps} repeticiones. Diagnóstico: ${clasificacion}`);
-            guardarEnHistorial('resistencia', `Test 7:3 60% (${mano.toUpperCase()})`, `${reps} reps [${clasificacion}]`);
-        }
-
-        // --- RUTINA: ENTRENAMIENTO INTELIGENTE ---
+        // --- ENTRENAMIENTO ---
         function ejecutarEntrenamientoRutin() {
-            pararRutina();
-            activarWakeLock(); // Bloquear apagado de pantalla
+            pararRutina(); activarWakeLock();
             const tWork = parseInt(document.getElementById('train-work').value);
             const tRest = parseInt(document.getElementById('train-rest').value);
             const totalReps = parseInt(document.getElementById('train-reps').value);
             const modoManos = document.getElementById('train-manos').value;
             const tipoNombre = document.getElementById('train-tipo').options[document.getElementById('train-tipo').selectedIndex].text;
 
-            let repActual = 1; let modo = 'COUNTDOWN'; let tiempoRestante = 3; datosGraficaTrain = [];
-            let avisoBajoCargaEmitido = false;
-
-            establecerColorEstado('PREP'); hablar("Empieza entrenamiento");
+            let repActual = 1; let modo = 'COUNTDOWN'; let tiempoRestante = 3; datosGraficaTrain = []; let avisoEmitido = false;
+            establecerColorEstado('PREP'); hablar("Empieza entreno");
 
             rutinaInterval = setInterval(() => {
                 let manoTexto = (modoManos === 'izq') ? "IZQ" : (modoManos === 'der') ? "DER" : (repActual % 2 !== 0) ? "IZQ" : "DER";
                 if(modoManos === 'ambas') calcularKgObjetivo(manoTexto.toLowerCase());
 
                 if (modo === 'COUNTDOWN') {
-                    document.getElementById('train-timer').innerText = `[${manoTexto}] EMPEZAMOS EN: ${tiempoRestante}`;
-                    if(tiempoRestante <= 0) { modo = 'WORK'; tiempoRestante = tWork; pitidoInicio(); hablar("Aplica carga"); establecerColorEstado('WORK'); }
-                    tiempoRestante--;
+                    document.getElementById('train-timer').innerText = `[${manoTexto}] EN: ${tiempoRestante}`;
+                    if(tiempoRestante <= 0) { modo = 'WORK'; tiempoRestante = tWork; pitidoInicio(); establecerColorEstado('WORK'); }
                 }
                 else if (modo === 'WORK') {
-                    let cargaSuficiente = fuerzaActual >= (targetActualKg - TOLERANCIA_KG);
-
-                    if (cargaSuficiente) {
-                        establecerColorEstado('WORK'); avisoBajoCargaEmitido = false;
-                        document.getElementById('train-timer').innerText = `[${manoTexto}] SUSPENDIENDO (${repActual}/${totalReps}): ${tiempoRestante}s`;
+                    if (fuerzaActual >= (targetActualKg - TOLERANCIA_KG)) {
+                        establecerColorEstado('WORK'); avisoEmitido = false;
+                        document.getElementById('train-timer').innerText = `[${manoTexto}] TRACCIÓN (${repActual}/${totalReps}): ${tiempoRestante}s`;
                         datosGraficaTrain.push(fuerzaActual); dibujarGraficaLinea('canvas-train', datosGraficaTrain);
 
                         if(tiempoRestante <= 0) {
                             pitidoFin();
-                            if(repActual < totalReps) {
-                                modo = 'REST'; tiempoRestante = tRest; establecerColorEstado('REST');
-                                let proxMano = (modoManos === 'izq') ? "IZQ" : (modoManos === 'der') ? "DER" : ((repActual + 1) % 2 !== 0) ? "IZQ" : "DER";
-                                hablar("Suelta. Siguiente mano " + (proxMano === 'IZQ' ? 'izquierda' : 'derecha'));
-                            } else {
-                                clearInterval(rutinaInterval); rutinaInterval = null; pararRutina();
-                                document.getElementById('train-timer').innerText = "SERIE COMPLETADA"; hablar("Serie completada con éxito");
-                                guardarEnHistorial('train', `${tipoNombre} (${modoManos.toUpperCase()})`, `${totalReps} reps efectivas`);
+                            if(repActual < totalReps) { modo = 'REST'; tiempoRestante = tRest; establecerColorEstado('REST'); }
+                            else {
+                                pararRutina(); document.getElementById('train-timer').innerText = "SERIE COMPLETADA";
+                                guardarEnHistorial('train', `${tipoNombre} (${modoManos.toUpperCase()})`, `${totalReps} Reps`);
                             }
                             repActual++;
                         }
                         tiempoRestante--;
                     } else {
                         establecerColorEstado('PAUSED');
-                        document.getElementById('train-timer').innerText = `⚠️ TIEMPO PAUSADO - ¡TIRA MÁS! (${tiempoRestante}s restantes)`;
-                        if (!avisoBajoCargaEmitido) { pitidoAvisoBajoCarga(); avisoBajoCargaEmitido = true; }
+                        document.getElementById('train-timer').innerText = `⚠️ ¡TIRA MÁS! (${tiempoRestante}s)`;
+                        if (!avisoEmitido) { pitidoAvisoBajoCarga(); avisoEmitido = true; }
                     }
                 }
                 else if (modo === 'REST') {
-                    let siguienteMano = (modoManos === 'izq') ? "IZQ" : (modoManos === 'der') ? "DER" : (repActual % 2 !== 0) ? "IZQ" : "DER";
-                    document.getElementById('train-timer').innerText = `RECUPERA (${repActual-1}/${totalReps}): ${tiempoRestante}s (Prox: ${siguienteMano})`;
-                    if(tiempoRestante <= 0) { modo = 'WORK'; tiempoExistente = tWork; pitidoInicio(); hablar("Aplica carga"); establecerColorEstado('WORK'); }
-                    tiempoRestante--;
+                    document.getElementById('train-timer').innerText = `REST: ${tiempoRestante}s`;
+                    if(tiempoRestante <= 0) { modo = 'WORK'; tiempoRestante = tWork; pitidoInicio(); establecerColorEstado('WORK'); }
                 }
+                tiempoRestante--;
             }, 1000);
         }
 
@@ -978,7 +908,6 @@
                 demoInterval = setInterval(() => {
                     rawFuerza = (Math.sin(t) + 1.1) * 16 + (Math.random() * 1.2);
                     fuerzaActual = rawFuerza - valorTara; if(fuerzaActual < 0) fuerzaActual = 0;
-
                     document.getElementById('vivo-fuerza').innerText = fuerzaActual.toFixed(1);
                     document.getElementById('test-fuerza').innerText = fuerzaActual.toFixed(1);
                     document.getElementById('train-fuerza').innerText = fuerzaActual.toFixed(1);
@@ -994,9 +923,7 @@
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('CrimpLab listo para usar sin internet.'))
-                    .catch(err => console.log('Error al activar modo offline', err));
+                navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
             });
         }
     </script>
