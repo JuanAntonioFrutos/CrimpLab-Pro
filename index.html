@@ -269,8 +269,7 @@
         </div>
 
         <div id="tab-historial" class="tab-content">
-            <h2>Historial y Evolución</h2>
-            
+            <h2>Historial de Sesiones</h2>
             <div class="legend-historial">
                 <div class="legend-item"><span class="dot" style="background:var(--accent-color)"></span> Test Max (Kg)</div>
                 <div class="legend-item"><span class="dot" style="background:var(--warning-color)"></span> Resis (Reps)</div>
@@ -350,46 +349,38 @@
             if (wakeLock !== null) { wakeLock.release().then(() => { wakeLock = null; }); }
         }
 
-        // --- CONEXIÓN ULTRA-ABIERTA SIN FILTROS RESTRICTIVOS ---
+        // --- NUEVA SECCIÓN: LÓGICA DE CONEXIÓN WEB BLUETOOTH INTEGRADA ---
         let bleDevice = null;
         let bleCharacteristic = null;
+
+        // UUIDs universales para servicios de comunicación Serial BLE (los que mapeas en Godot)
+        const UUID_SERVICIO = "0000ffe0-0000-1000-8000-00805f9b34fb"; 
+        const UUID_CARACTERISTICA = "0000ffe1-0000-1000-8000-00805f9b34fb";
 
         async function conectarBluetooth() {
             const btnConectar = document.getElementById('btn-conectar-ble');
             try {
-                hablar("Buscando todos los dispositivos");
+                hablar("Buscando sensor");
                 
-                // Forzamos a Chrome a aceptar CUALQUIER dispositivo sin validar sus servicios internos previamente
+                // Filtramos para buscar el dispositivo con el servicio serie correcto
                 bleDevice = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true
+                    filters: [{ services: [UUID_SERVICIO] }]
                 });
 
                 btnConectar.innerText = "⏳ Enlazando...";
                 btnConectar.style.backgroundColor = "var(--warning-color)";
 
                 const server = await bleDevice.gatt.connect();
-                const services = await server.getPrimaryServices();
-                if(services.length === 0) throw new Error("No se encontraron canales de datos primarios.");
-                
-                // Intentamos leer la primera característica útil disponible dinámicamente
-                let caracteristicaEncontrada = null;
-                for (let service of services) {
-                    let characteristics = await service.getCharacteristics();
-                    if (characteristics.length > 0) {
-                        caracteristicaEncontrada = characteristics[0];
-                        break;
-                    }
-                }
+                const service = await server.getPrimaryService(UUID_SERVICIO);
+                bleCharacteristic = await service.getCharacteristic(UUID_CARACTERISTICA);
 
-                if (!caracteristicaEncontrada) throw new Error("El dispositivo no tiene un canal de lectura compatible.");
-                
-                bleCharacteristic = caracteristicaEncontrada;
+                // Activamos la escucha de datos automática
                 await bleCharacteristic.startNotifications();
                 bleCharacteristic.addEventListener('characteristicvaluechanged', procesarDatosFuerzaBluetooth);
 
                 btnConectar.innerText = "🟢 Conectado";
                 btnConectar.style.backgroundColor = "#00c853";
-                hablar("Conectado con éxito");
+                hablar("Sensor conectado");
 
                 bleDevice.addEventListener('gattserverdisconnected', onBluetoothDesconectado);
 
@@ -397,7 +388,7 @@
                 console.error(error);
                 btnConectar.innerText = "Conectar";
                 btnConectar.style.backgroundColor = "var(--primary-color)";
-                mostrarAlertaPersonalizada("Error de Conexión", "Asegúrate de usar Google Chrome. Detalle: " + error.message, "❌");
+                alert("Error al conectar: " + error.message);
             }
         }
 
@@ -406,27 +397,22 @@
             btnConectar.innerText = "Conectar";
             btnConectar.style.backgroundColor = "var(--primary-color)";
             hablar("Sensor desconectado");
-            mostrarAlertaPersonalizada("Desconectado", "Se ha perdido la conexión con el dinamómetro.", "⚠️");
         }
 
         function procesarDatosFuerzaBluetooth(event) {
             try {
                 const value = event.target.value;
-                let fuerzaRecibida = 0;
+                // Decodificamos el array de bytes recibido a formato Texto (String)
                 const decoder = new TextDecoder('utf-8');
                 const texto = decoder.decode(value).trim();
-                
-                if (!isNaN(parseFloat(texto))) {
-                    fuerzaRecibida = parseFloat(texto);
-                } else {
-                    fuerzaRecibida = value.getUint16(0, true) / 10;
-                }
+                let fuerzaRecibida = parseFloat(texto);
 
                 if(!isNaN(fuerzaRecibida)) {
                     rawFuerza = fuerzaRecibida;
                     fuerzaActual = rawFuerza - valorTara;
                     if(fuerzaActual < 0) fuerzaActual = 0;
 
+                    // Actualizar pantallas de forma instantánea
                     document.getElementById('vivo-fuerza').innerText = fuerzaActual.toFixed(1);
                     document.getElementById('test-fuerza').innerText = fuerzaActual.toFixed(1);
                     document.getElementById('train-fuerza').innerText = fuerzaActual.toFixed(1);
@@ -649,7 +635,6 @@
             cargarSelectorPlantillas(); document.getElementById('train-tipo').value = `custom_${nombre}`; actualizarPlantillas();
         }
 
-        // --- CORRECCIÓN EN ELIMINAR PLANTILLA (REEMPLAZADO CONFIRM POR SEGURIDAD) ---
         function eliminarPlantillaUsuario() {
             const selector = document.getElementById('train-tipo'); const tipo = selector.value; if(!tipo.startsWith('custom_')) return;
             const nombre = tipo.replace('custom_', '');
