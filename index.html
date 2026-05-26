@@ -440,8 +440,20 @@
             calcularTargetResistencia();
             dibujarGraficaLinea('canvas-test', []); dibujarGraficaLinea('canvas-train', []); dibujarGraficaLinea('canvas-resis', []);
             setInterval(actualizarZonasColorDisplay, 100);
+        
+            // --- SOLUCIÓN PARA LA SUSPENSIÓN DE PANTALLA ---
+            // Activa el bloqueo de pantalla en cuanto el usuario toca cualquier parte de la web
+            document.body.addEventListener('click', () => {
+                activarWakeLock();
+            }, { once: false }); // Se ejecuta cada vez que tocas para asegurar que no se pierda
+        
+            // Si minimizas la web y vuelves, vuelve a forzar que la pantalla se quede encendida
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    activarWakeLock();
+                }
+            });
         }
-
         function tararSensor() { valorTara = rawFuerza; alert("Puesto a Cero"); }
 
         function actualizarZonasColorDisplay() {
