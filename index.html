@@ -357,48 +357,36 @@
             const btnConectar = document.getElementById('btn-conectar-ble');
             try {
                 hablar("Buscando sensor");
-                console.log("Iniciando escaneo Web Bluetooth...");
-
-                // Abre el cuadro nativo del móvil aceptando cualquier dispositivo con servicios de datos básicos
-               // MODIFICADO: Filtra solo por el nombre que emite tu sensor (o parte de él)
+                
+                // MODIFICADO: Filtro ultra-estricto por nombre exacto para eliminar basura de la lista
                 bleDevice = await navigator.bluetooth.requestDevice({
                     filters: [
-                        { namePrefix: 'IF_B7' }, // Reemplaza 'Dinamometro' por el nombre Bluetooth real de tu placa (Ej: 'ESP32', 'HM-10', 'Dinamometrico')
+                        { name: 'IF_B7' } // Buscamos SOLO el dispositivo que se llame exactamente así
                     ],
-                    optionalServices: [UUID_SERVICIO] // Avisamos a Chrome que usaremos este servicio
+                    optionalServices: [UUID_SERVICIO]
                 });
 
                 btnConectar.innerText = "⏳ Enlazando...";
                 btnConectar.style.backgroundColor = "var(--warning-color)";
 
                 const server = await bleDevice.gatt.connect();
-                console.log("Conectado al servidor GATT");
+                const service = await server.getPrimaryService(UUID_SERVICIO);
+                bleCharacteristic = await service.getCharacteristic(UUID_CARACTERISTICA);
 
-                // Buscamos los servicios primarios disponibles
-                const services = await server.getPrimaryServices();
-                if(services.length === 0) throw new Error("No se han encontrado servicios en el sensor.");
-
-                // Obtenemos las características del primer servicio disponible
-                const characteristics = await services[0].getCharacteristics();
-                if(characteristics.length === 0) throw new Error("No se han encontrado canales de datos.");
-
-                // Nos suscribimos al canal que notifica los datos de fuerza
-                bleCharacteristic = characteristics[0];
                 await bleCharacteristic.startNotifications();
                 bleCharacteristic.addEventListener('characteristicvaluechanged', procesarDatosFuerzaBluetooth);
 
                 btnConectar.innerText = "🟢 Conectado";
                 btnConectar.style.backgroundColor = "#00c853";
-                hablar("Sensor conectado correctamente");
+                hablar("Sensor conectado");
 
-                // Si se desconecta accidentalmente, reaccionar de inmediato
                 bleDevice.addEventListener('gattserverdisconnected', onBluetoothDesconectado);
 
             } catch (error) {
-                console.error("Fallo en Bluetooth:", error);
+                console.error(error);
                 btnConectar.innerText = "Conectar";
                 btnConectar.style.backgroundColor = "var(--primary-color)";
-                mostrarAlertaPersonalizada("Error de Conexión", "No se pudo vincular el sensor: " + error.message, "❌");
+                alert("Error al conectar: " + error.message);
             }
         }
 
