@@ -363,7 +363,7 @@
                // MODIFICADO: Filtra solo por el nombre que emite tu sensor (o parte de él)
                 bleDevice = await navigator.bluetooth.requestDevice({
                     filters: [
-                        { namePrefix: '' }, // Reemplaza 'Dinamometro' por el nombre Bluetooth real de tu placa (Ej: 'ESP32', 'HM-10', 'Dinamometrico')
+                        { namePrefix: 'IF_B7' }, // Reemplaza 'Dinamometro' por el nombre Bluetooth real de tu placa (Ej: 'ESP32', 'HM-10', 'Dinamometrico')
                     ],
                     optionalServices: [UUID_SERVICIO] // Avisamos a Chrome que usaremos este servicio
                 });
