@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>CrimpLab Pro</title>
-        <link rel="manifest" href="manifest.json">
-        <meta name="theme-color" content="#121214">
-        <meta name="mobile-web-app-capable" content="yes">
-
+    <title>CrimpLab Pro</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#121214">
+    <meta name="mobile-web-app-capable" content="yes">
     <link rel="icon" type="image/png" href="favicon.png">
 
     <style>
@@ -126,7 +125,7 @@
             </div>
 
             <div class="grid-2">
-                <button class="btn btn-primary" onclick="alert('Conectando vía Bluetooth...')">Conectar</button>
+                <button class="btn btn-primary" onclick="conectarBluetooth()">Conectar</button>
                 <button class="btn btn-danger" style="background:#424242;" onclick="tararSensor()">Tarar (Cero)</button>
             </div>
             <button class="btn" style="background:#2c2c35; color:var(--text-secondary);" id="btn-demo-toggle" onclick="conmutarDemoGlobal()">Activar Modo Demo</button>
@@ -219,10 +218,10 @@
 
             <div id="wrapper-plantilla-custom" style="background: rgba(41, 182, 246, 0.1); border: 1px dashed var(--accent-color); border-radius: 10px; padding: 12px; margin-bottom: 15px; display: block;">
                 <div class="form-group" style="margin-bottom: 8px;">
-                    <label style="color: var(--accent-color)">Guardar esta configuración como plantilla:</label>
-                    <input type="text" id="custom-template-name" placeholder="Ej: Regleta 15mm, Romo 50%...">
+                    <label style="color: var(--accent-color)">Nombre de tu plantilla nueva:</label>
+                    <input type="text" id="custom-template-name" placeholder="Ej: Multipower 15mm, Bloque Extremo...">
                 </div>
-                <button class="btn btn-accent" style="margin-top:0; padding: 10px; font-size: 0.9rem;" onclick="guardarPlantillaUsuario()">💾 Guardar Plantilla</button>
+                <button class="btn btn-accent" style="margin-top:0; padding: 10px; font-size: 0.9rem;" onclick="guardarPlantillaUsuario()">💾 Guardar Configuración</button>
             </div>
 
             <button id="btn-delete-template" class="btn btn-danger" style="display:none; margin-top:-5px; margin-bottom: 15px; padding:10px; font-size:0.9rem;" onclick="eliminarPlantillaUsuario()">🗑️ Eliminar Plantilla Seleccionada</button>
@@ -266,14 +265,11 @@
             </div>
         </div>
 
-
-
-
         <div id="tab-historial" class="tab-content">
             <h2>Historial de Sesiones</h2>
             <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
                 <div class="grid-2">
-                    <button class="btn btn-accent" style="padding: 10px 5px; font-size:0.85rem; margin:0;" onclick="exportarCSV()">📤 Exportar CSV</button>
+                    <button class="btn btn-accent" style="padding: 10px 5px; font-size:0.85rem; margin:0;" onclick="abrirModalExportar()">📤 Exportar CSV</button>
 
                     <label for="importar-file" class="btn" style="background: #29b6f6; color: #000; text-align: center; padding: 10px 5px; font-size: 0.85rem; margin: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
                         📥 Importar CSV
@@ -286,9 +282,7 @@
             <div id="lista-historial" class="history-list"></div>
         </div>
 
-
-
-<div id="custom-confirm-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+    </div> <div id="custom-confirm-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
         <div style="background: var(--card-color); border: 2px solid var(--danger-color); border-radius: 20px; padding: 25px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
             <div style="font-size: 3rem; margin-bottom: 10px;">⚠️</div>
             <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 1.3rem;">¿Vaciar historial por completo?</h3>
@@ -300,8 +294,7 @@
         </div>
     </div>
 
-
-    <div id="custom-alert-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1001; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+    <div id="custom-alert-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1001; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
         <div style="background: var(--card-color); border: 2px solid var(--accent-color); border-radius: 20px; padding: 25px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
             <div id="custom-alert-icon" style="font-size: 3rem; margin-bottom: 10px;">✨</div>
             <h3 id="custom-alert-title" style="margin: 0 0 10px 0; color: #fff; font-size: 1.3rem;">Notificación</h3>
@@ -310,6 +303,32 @@
         </div>
     </div>
 
+    <div id="custom-bluetooth-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1002; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+        <div style="background: var(--card-color); border: 2px solid var(--primary-color); border-radius: 20px; padding: 25px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <div style="font-size: 3rem; margin-bottom: 10px; color: var(--accent-color);">📡</div>
+            <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 1.3rem;">Buscando Sensores...</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 15px;">Asegúrate de que tu dinamómetro digital Bluetooth está encendido y emitiendo señal.</p>
+            <div style="background: #121214; border: 1px solid var(--border-color); border-radius: 10px; padding: 15px; text-align: left; margin-bottom: 20px; max-height: 120px; overflow-y: auto;">
+                <div style="color: var(--primary-color); font-size: 0.85rem; margin-bottom: 8px; cursor:pointer;" onclick="vincularDispositivoSimulado('CrimpLab_Dynamometer_V4')">🔄 [Simulado] CrimpLab_Dynamometer_V4</div>
+                <div style="color: var(--text-secondary); font-size: 0.82rem; font-style: italic;">Buscando otros dispositivos cercanos...</div>
+            </div>
+            <button class="btn" style="background: #2c2c35; color: var(--text-color); margin: 0;" onclick="cerrarModalBluetooth()">Cancelar Búsqueda</button>
+        </div>
+    </div>
+
+    <div id="custom-export-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1003; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+        <div style="background: var(--card-color); border: 2px solid var(--accent-color); border-radius: 20px; padding: 25px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <div style="font-size: 3rem; margin-bottom: 10px;">💾</div>
+            <h3 style="margin: 0 0 10px 0; color: #fff; font-size: 1.3rem;">Guardar Copia de Seguridad</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 15px;">Elige un nombre identificativo para tu archivo de registro de entrenamientos.</p>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <input type="text" id="custom-csv-name" placeholder="Ej: historial_escalada_mayo">
+            </div>
+            <div class="grid-2">
+                <button class="btn" style="background: #2c2c35; color: var(--text-color); margin: 0;" onclick="cerrarModalExportar()">Cancelar</button>
+                <button class="btn btn-accent" style="margin: 0;" onclick="confirmarExportacionCSV()">Descargar</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -363,7 +382,39 @@
             setInterval(actualizarZonasColorDisplay, 100);
         }
 
-        function tararSensor() { valorTara = rawFuerza; alert("Sensor puesto a Cero (" + valorTara.toFixed(1) + " Kg)"); }
+        // --- SISTEMA DE ALERTAS Y CONEXIONES ESTÉTICAS REEMPLAZANDO ALERT() ---
+        function mostrarAlertaPersonalizada(titulo, mensaje, icono = "✨") {
+            document.getElementById('custom-alert-title').innerText = titulo;
+            document.getElementById('custom-alert-text').innerText = mensaje;
+            document.getElementById('custom-alert-icon').innerText = icono;
+            const modal = document.getElementById('custom-alert-modal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function cerrarAlertaPersonalizada() {
+            const modal = document.getElementById('custom-alert-modal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function tararSensor() {
+            valorTara = rawFuerza;
+            mostrarAlertaPersonalizada("Sensor Tarado", "Se ha configurado la carga actual (" + valorTara.toFixed(1) + " Kg) como punto cero.", "⚖️");
+        }
+
+        function conectarBluetooth() {
+            const modal = document.getElementById('custom-bluetooth-modal');
+            if(modal) modal.style.display = 'flex';
+        }
+
+        function cerrarModalBluetooth() {
+            const modal = document.getElementById('custom-bluetooth-modal');
+            if(modal) modal.style.display = 'none';
+        }
+
+        function vincularDispositivoSimulado(nombre) {
+            cerrarModalBluetooth();
+            mostrarAlertaPersonalizada("Conexión Establecida", `Vinculado correctamente con el dispositivo: ${nombre}. Listo para medir.`, "✅");
+        }
 
         function actualizarZonasColorDisplay() {
             const displays = ['display-vivo-node', 'display-test-node', 'display-train-node', 'display-resis-node'];
@@ -447,8 +498,6 @@
 
         function calcularTargetResistencia(manoExplicita = null) {
             const selectorMano = manoExplicita || document.getElementById('resis-mano').value;
-
-            // Si está seleccionado 'ambas', para la previsualización usamos la media o la mayor para no poner 0
             let manoReferencia = selectorMano;
             if(selectorMano === 'ambas') manoReferencia = (recordIzq >= recordDer) ? 'izq' : 'der';
 
@@ -463,7 +512,7 @@
             return targetActualKg;
         }
 
-        // --- SISTEMA DE PLANTILLAS PERSONALIZADAS ---
+        // --- GESTIÓN DE PLANTILLAS PERSONALIZADAS ---
         function obtenerPlantillasUsuario() { return JSON.parse(localStorage.getItem('fuerza_plantillas_custom')) || {}; }
         function cargarSelectorPlantillas() {
             const selector = document.getElementById('train-tipo'); const plantillas = obtenerPlantillasUsuario();
@@ -497,7 +546,7 @@
             calcularKgObjetivo();
         }
 
-       function guardarPlantillaUsuario() {
+        function guardarPlantillaUsuario() {
             const nombre = document.getElementById('custom-template-name').value.trim();
             if(!nombre) {
                 mostrarAlertaPersonalizada("Atención", "Por favor, introduce un nombre para la plantilla.", "⚠️");
@@ -516,22 +565,115 @@
             cargarSelectorPlantillas();
             document.getElementById('train-tipo').value = `custom_${nombre}`;
             actualizarPlantillas();
-
-            // Reemplazo del alert viejo
             mostrarAlertaPersonalizada("¡Guardado!", `La plantilla "${nombre}" se ha configurado correctamente.`, "💾");
         }
 
         function eliminarPlantillaUsuario() {
             const selector = document.getElementById('train-tipo'); const tipo = selector.value; if(!tipo.startsWith('custom_')) return;
             const nombre = tipo.replace('custom_', '');
-            if(confirm(`¿Borrar plantilla "${nombre}"?`)) {
-                const plantillas = obtenerPlantillasUsuario(); delete plantillas[nombre];
-                localStorage.setItem('fuerza_plantillas_custom', JSON.stringify(plantillas));
-                cargarSelectorPlantillas(); selector.value = 'libre'; actualizarPlantillas();
-            }
+
+            // Reutilizamos el sistema para eliminar de forma simplificada o alerta
+            const plantillas = obtenerPlantillasUsuario(); delete plantillas[nombre];
+            localStorage.setItem('fuerza_plantillas_custom', JSON.stringify(plantillas));
+            cargarSelectorPlantillas(); selector.value = 'libre'; actualizarPlantillas();
+            mostrarAlertaPersonalizada("Plantilla Eliminada", `La rutina "${nombre}" ha sido borrada con éxito.`, "🗑️");
         }
 
-        // --- HISTORIAL ---
+        // --- MODAL CONFIRMACIÓN BORRAR HISTORIAL COMPLETO ---
+        function borrarHistorial() {
+            const modal = document.getElementById('custom-confirm-modal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function cerrarConfirmarBorrado() {
+            const modal = document.getElementById('custom-confirm-modal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function confirmarBorradoHistorial() {
+            localStorage.removeItem('fuerza_historial');
+            renderizarHistorial();
+            cerrarConfirmarBorrado();
+            hablar("Historial vaciado por completo");
+            mostrarAlertaPersonalizada("Historial Limpio", "Todos tus registros locales se han eliminado de forma definitiva.", "🗑️");
+        }
+
+        // --- EXPORTAR CSV PERSONALIZADO ---
+        function abrirModalExportar() {
+            let historial = JSON.parse(localStorage.getItem('fuerza_historial')) || [];
+            if(historial.length === 0) {
+                mostrarAlertaPersonalizada("Historial Vacío", "No tienes datos guardados todavía para exportar.", "❌");
+                return;
+            }
+            document.getElementById('custom-csv-name').value = "historial_escalada_" + new Date().toISOString().slice(0,10);
+            const modal = document.getElementById('custom-export-modal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function cerrarModalExportar() {
+            const modal = document.getElementById('custom-export-modal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function confirmarExportacionCSV() {
+            let nombreArchivo = document.getElementById('custom-csv-name').value.trim();
+            if(!nombreArchivo) nombreArchivo = "historial_crimp_lab";
+
+            let historial = JSON.parse(localStorage.getItem('fuerza_historial')) || [];
+            let csvContent = "data:text/csv;charset=utf-8,Fecha,Tipo,Descripcion,Resultado\n";
+            historial.forEach(r => { csvContent += `"${r.fecha}","${r.tipo}","${r.info}","${r.valor}"\n`; });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `${nombreArchivo}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            cerrarModalExportar();
+            mostrarAlertaPersonalizada("Archivo Descargado", `Se ha exportado el archivo "${nombreArchivo}.csv" de forma segura.`, "📥");
+        }
+
+        // --- IMPORTAR COPIA SEGURIDAD CSV ---
+        function importarCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const contenido = e.target.result;
+                const lineas = contenido.split("\n");
+                let historialImportado = [];
+
+                for (let i = 1; i < lineas.length; i++) {
+                    const linea = lineas[i].trim();
+                    if (!linea) continue;
+
+                    const c = linea.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                    if (c && c.length >= 4) {
+                        const fecha = c[0].replace(/"/g, "");
+                        const tipo = c[1].replace(/"/g, "");
+                        const info = c[2].replace(/"/g, "");
+                        const valor = c[3].replace(/"/g, "");
+                        historialImportado.push({ fecha, tipo, info, valor });
+                    }
+                }
+
+                if (historialImportado.length > 0) {
+                    let historialActual = JSON.parse(localStorage.getItem('fuerza_historial')) || [];
+                    let historialFinal = [...historialImportado, ...historialActual];
+                    localStorage.setItem('fuerza_historial', JSON.stringify(historialFinal));
+                    renderizarHistorial();
+                    mostrarAlertaPersonalizada("Importación Exitosa", `Se han restaurado un total de ${historialImportado.length} sesiones en tu teléfono.`, "📥");
+                } else {
+                    mostrarAlertaPersonalizada("Error de Formato", "El archivo seleccionado no coincide con la cabecera válida de CrimpLab Pro.", "❌");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // --- SISTEMA DEL HISTORIAL ---
         function guardarEnHistorial(tipo, info, valor) {
             let historial = JSON.parse(localStorage.getItem('fuerza_historial')) || [];
             const item = {
@@ -559,102 +701,6 @@
                     </div>
                 `;
             }).join('');
-        }
-
-        function mostrarAlertaPersonalizada(titulo, mensaje, icono = "✨") {
-            document.getElementById('custom-alert-title').innerText = titulo;
-            document.getElementById('custom-alert-text').innerText = mensaje;
-            document.getElementById('custom-alert-icon').innerText = icono;
-
-            const modal = document.getElementById('custom-alert-modal');
-            if (modal) modal.style.display = 'flex';
-        }
-
-        function cerrarAlertaPersonalizada() {
-            const modal = document.getElementById('custom-alert-modal');
-            if (modal) modal.style.display = 'none';
-        }
-
-
-       function borrarHistorial() {
-            // En lugar de lanzar el confirm nativo, mostramos nuestro modal estético
-            const modal = document.getElementById('custom-confirm-modal');
-            if (modal) modal.style.display = 'flex';
-        }
-
-        function cerrarConfirmarBorrado() {
-            const modal = document.getElementById('custom-confirm-modal');
-            if (modal) modal.style.display = 'none';
-        }
-
-        function confirmarBorradoHistorial() {
-            // Ejecuta el borrado real
-            localStorage.removeItem('fuerza_historial');
-            renderizarHistorial();
-
-            // Cierra el modal y avisa al usuario con voz
-            cerrarConfirmarBorrado();
-            hablar("Historial vaciado por completo");
-        }
-
-        function importarCSV(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const contenido = e.target.result;
-        const lineas = contenido.split("\n");
-        let historialImportado = [];
-
-        // Empezamos en 1 para saltarnos la cabecera (Fecha, Tipo, Descripcion, Resultado)
-        for (let i = 1; i < lineas.length; i++) {
-            const linea = lineas[i].trim();
-            if (!linea) continue;
-
-            // Expresión regular para separar por comas respetando los textos ente comillas
-            const c = linea.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-            if (c && c.length >= 4) {
-                const fecha = c[0].replace(/"/g, "");
-                const tipo = c[1].replace(/"/g, "");
-                const info = c[2].replace(/"/g, "");
-                const valor = c[3].replace(/"/g, "");
-
-                historialImportado.push({ fecha, tipo, info, valor });
-            }
-        }
-
-        if (historialImportado.length > 0) {
-            // Unir lo importado con lo que ya hubiera o sobreescribir
-            let historialActual = JSON.parse(localStorage.getItem('fuerza_historial')) || [];
-            // Filtramos duplicados por si acaso o simplemente combinamos:
-            let historialFinal = [...historialImportado, ...historialActual];
-
-            // Ordenar por fecha o eliminar duplicados exactos si se desea. Aquí combinamos directo:
-            localStorage.setItem('fuerza_historial', JSON.stringify(historialFinal));
-
-            // Intentar recuperar los récords más altos del CSV de forma automática
-            historialImportado.forEach(item => {
-                if(item.tipo === 'test') {
-                    // Buscar si contiene Kg en la info o valor para restaurar recordIzq y recordDer
-                    // Esto es un extra genial para no perder tus marcas máximas
-                }
-            });
-
-            renderizarHistorial();
-            alert(`¡Éxito! Se han restaurado ${historialImportado.length} sesiones en tu nuevo teléfono.`);
-        } else {
-            alert("El archivo no tiene un formato válido de CrimpLab.");
-        }
-    };
-    reader.readAsText(file);
-}
-        function exportarCSV() {
-            let historial = JSON.parse(localStorage.getItem('fuerza_historial')) || []; if(historial.length === 0) { alert("Historial vacío."); return; }
-            let csvContent = "data:text/csv;charset=utf-8,Fecha,Tipo,Descripcion,Resultado\n";
-            historial.forEach(r => { csvContent += `"${r.fecha}","${r.tipo}","${r.info}","${r.valor}"\n`; });
-            const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "historial_escalada.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
 
         function calcularKgObjetivo(manoFuerzaExplicita = null) {
@@ -732,15 +778,14 @@
             }, 1000);
         }
 
-        // --- TEST DE RESISTENCIA INTERMITENTE 7:3 HASTA EL FALLO (ACTUALIZADO CON SOPORTE MODALIDAD AMBAS) ---
+        // --- TEST DE RESISTENCIA INTERMITENTE 7:3 AL FALLO ---
         function ejecutarTestResistencia() {
             pararRutina();
             const modoManos = document.getElementById('resis-mano').value;
 
-            // Verificación previa de récords
-            if(modoManos === 'izq' && recordIzq <= 0) { alert("Primero debes realizar un Test Max con la mano izquierda."); return; }
-            if(modoManos === 'der' && recordDer <= 0) { alert("Primero debes realizar un Test Max con la mano derecha."); return; }
-            if(modoManos === 'ambas' && (recordIzq <= 0 || recordDer <= 0)) { alert("Necesitas registrar el Test Max de AMBAS manos antes de iniciar este test combinado."); return; }
+            if(modoManos === 'izq' && recordIzq <= 0) { mostrarAlertaPersonalizada("Sin Test Max", "Primero debes realizar un Test Max con la mano izquierda.", "⚠️"); return; }
+            if(modoManos === 'der' && recordDer <= 0) { mostrarAlertaPersonalizada("Sin Test Max", "Primero debes realizar un Test Max con la mano derecha.", "⚠️"); return; }
+            if(modoManos === 'ambas' && (recordIzq <= 0 || recordDer <= 0)) { mostrarAlertaPersonalizada("Faltan Datos", "Necesitas registrar el Test Max de AMBAS manos antes de iniciar este test combinado.", "⚠️"); return; }
 
             let repsCompletadas = 0; let modo = 'COUNTDOWN'; let tiempoRestante = 3; datosGraficaResis = [];
             let fallosCargaSeguidos = 0;
@@ -749,15 +794,13 @@
             hablar("Iniciando test de resistencia intermitente al sesenta por ciento");
 
             rutinaInterval = setInterval(() => {
-                // Determinar qué mano toca en este ciclo exacto si está en modo alternar
                 let manoActual = modoManos;
                 if(modoManos === 'ambas') {
                     manoActual = (repsCompletadas % 2 === 0) ? 'izq' : 'der';
                 }
 
-                // Recalcular el target de kg según la mano actual que deba traccionar
                 let targetKg = parseFloat(((manoActual === 'izq' ? recordIzq : recordDer) * 0.6).toFixed(1));
-                targetActualKg = targetKg; // Sincronizar para guía de color y líneas en el canvas
+                targetActualKg = targetKg;
 
                 if (modo === 'COUNTDOWN') {
                     let proximaManoTexto = (modoManos === 'ambas') ? "IZQUIERDA" : modoManos.toUpperCase();
@@ -774,14 +817,12 @@
                     document.getElementById('resis-timer').innerText = `💪 REP ${repsCompletadas + 1} [${manoTextoBanner}] - MANTÉN ${targetKg} Kg: ${tiempoRestante}s`;
                     datosGraficaResis.push(fuerzaActual); dibujarGraficaLinea('canvas-resis', datosGraficaResis);
 
-                    // Feedback visual por zonas
                     let cargaSuficiente = fuerzaActual >= (targetKg - TOLERANCIA_KG);
                     if(!cargaSuficiente) establecerColorEstado('PAUSED'); else establecerColorEstado('WORK');
 
                     if(tiempoRestante <= 0) {
                         pitidoFin();
 
-                        // Evaluar si los últimos segundos mantuvieron el objetivo
                         let ultimosSegundos = datosGraficaResis.slice(-5);
                         let mediaFuerza = ultimosSegundos.reduce((a,b)=>a+b, 0) / (ultimosSegundos.length || 1);
 
@@ -792,7 +833,6 @@
                             fallosCargaSeguidos = 0;
                         }
 
-                        // Criterio de fallo IRCRA: 2 repeticiones seguidas fallidas
                         if(fallosCargaSeguidos >= 2) {
                             finalizarTestResistencia(repsCompletadas, "Fallo por fatiga acumulada", modoManos);
                             return;
@@ -801,7 +841,6 @@
                         repsCompletadas++;
                         modo = 'REST'; tiempoRestante = 3; establecerColorEstado('REST');
 
-                        // Si es alternado, le cantamos la mano del siguiente bloque justo al iniciar el descanso corto
                         if(modoManos === 'ambas') {
                             let proximaMano = (repsCompletadas % 2 === 0) ? "izquierda" : "derecha";
                             hablar("Suelta. Siguiente mano " + proximaMano);
@@ -834,7 +873,6 @@
 
             document.getElementById('resis-timer').innerText = "TEST FINALIZADO";
             hablar(`Test terminado. Completaste ${reps} repeticiones. Diagnóstico: ${clasificacion}`);
-
             guardarEnHistorial('resistencia', `Test 7:3 60% (${mano.toUpperCase()})`, `${reps} reps [${clasificacion}]`);
         }
 
@@ -898,7 +936,7 @@
             }, 1000);
         }
 
-        // --- MODO DEMO ---
+        // --- MODO DEMO GLOBAL ---
         function conmutarDemoGlobal() {
             demoActiva = !demoActiva; const btn = document.getElementById('btn-demo-toggle');
             if(demoActiva) {
@@ -920,7 +958,7 @@
                 document.getElementById('vivo-fuerza').innerText = "0.0"; document.getElementById('test-fuerza').innerText = "0.0"; document.getElementById('train-fuerza').innerText = "0.0"; document.getElementById('resis-fuerza').innerText = "0.0";
             }
         }
-        // Registrar el Service Worker para soporte Offline total
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
