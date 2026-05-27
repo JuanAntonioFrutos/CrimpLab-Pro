@@ -114,8 +114,7 @@
         </div>
 
         <div id="tab-vivo" class="tab-content active">
-            <h2>Monitor en Tiempo Real</h2>
-            <h2>Monitor en Tiempo Real (VERSIÓN FILTRO FIJO) V0.1</h2>
+            <h2>Monitor en Tiempo Real (VERSIÓN FILTRO FIJO) V0.2</h2>
             <p class="subtitle">Semiarqueo estricto (90º) - Regleta 15mm</p>
             <div id="display-vivo-node" class="display-fuerza"><span id="vivo-fuerza">0.0</span><span class="unidad"> Kg</span></div>
 
@@ -292,7 +291,7 @@
             </div>
         </div>
 
-        <div id="custom-alert-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1001; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
+        <div id="custom-alert-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 101; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
             <div style="background: var(--card-color); border: 2px solid var(--accent-color); border-radius: 20px; padding: 25px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
                 <div id="custom-alert-icon" style="font-size: 3rem; margin-bottom: 10px;">✨</div>
                 <h3 id="custom-alert-title" style="margin: 0 0 10px 0; color: #fff; font-size: 1.3rem;">Notificación</h3>
@@ -303,6 +302,11 @@
     </div>
 
     <script>
+        // --- CONFIGURACIÓN DE IDENTIFICADORES BLE DE TU SENSOR ---
+        // Declaramos los UUIDs globales oficiales al principio para evitar errores de referencia ("not defined")
+        const UUID_SEVICIO = "0000ffe0-0000-1000-8000-00805f9b34fb";       // ID genérico del Servicio Serie BLE
+        const UUID_CARACTERISTICA = "0000ffe1-0000-1000-8000-00805f9b34fb"; // ID genérico del canal TX/RX de datos
+
         let audioCtx = null;
         function playBeep(frecuencia, duracion) {
             try {
@@ -354,55 +358,55 @@
         let bleDevice = null;
         let bleCharacteristic = null;
 
-async function conectarBluetooth() {
-    const btnConectar = document.getElementById('btn-conectar-ble');
-    
-    if (btnConectar.disabled) return; 
+        async function conectarBluetooth() {
+            const btnConectar = document.getElementById('btn-conectar-ble');
 
-    try {
-        btnConectar.disabled = true;
-        btnConectar.innerText = "⏳ Buscando...";
-        btnConectar.style.backgroundColor = "var(--warning-color)";
-        
-        hablar("Buscando sensor");
-        
-        // Corregido: apuntando a las variables exactas de tu script
-        bleDevice = await navigator.bluetooth.requestDevice({
-            filters: [
-                { name: 'IF_B7' }
-            ],
-            optionalServices: [UUID_SEVICIO] // Asegúrate de que se llama igual que tu variable de arriba (sin la R)
-        });
+            if (btnConectar.disabled) return;
 
-        btnConectar.innerText = "⏳ Enlazando...";
+            try {
+                btnConectar.disabled = true;
+                btnConectar.innerText = "⏳ Buscando...";
+                btnConectar.style.backgroundColor = "var(--warning-color)";
 
-        const server = await bleDevice.gatt.connect();
-        const service = await server.getPrimaryService(UUID_SEVICIO); // Corregido
-        bleCharacteristic = await service.getCharacteristic(UUID_CARACTERISTICA); // Corregido
+                hablar("Buscando sensor");
 
-        await bleCharacteristic.startNotifications();
-        bleCharacteristic.addEventListener('characteristicvaluechanged', procesarDatosFuerzaBluetooth);
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    filters: [
+                        { name: 'IF_B7' }
+                    ],
+                    optionalServices: [UUID_SEVICIO]
+                });
 
-        btnConectar.innerText = "🟢 Conectado";
-        btnConectar.style.backgroundColor = "#00c853";
-        hablar("Sensor conectado");
+                btnConectar.innerText = "⏳ Enlazando...";
 
-        bleDevice.addEventListener('gattserverdisconnected', onBluetoothDesconectado);
+                const server = await bleDevice.gatt.connect();
+                const service = await server.getPrimaryService(UUID_SEVICIO);
+                bleCharacteristic = await service.getCharacteristic(UUID_CARACTERISTICA);
 
-    } catch (error) {
-        console.error(error);
-        btnConectar.disabled = false;
-        btnConectar.innerText = "Conectar";
-        btnConectar.style.backgroundColor = "var(--primary-color)";
-        
-        if (error.name !== 'NotFoundError') {
-            alert("Error al conectar: " + error.message);
+                await bleCharacteristic.startNotifications();
+                bleCharacteristic.addEventListener('characteristicvaluechanged', procesarDatosFuerzaBluetooth);
+
+                btnConectar.innerText = "🟢 Conectado";
+                btnConectar.style.backgroundColor = "#00c853";
+                hablar("Sensor conectado");
+
+                bleDevice.addEventListener('gattserverdisconnected', onBluetoothDesconectado);
+
+            } catch (error) {
+                console.error(error);
+                btnConectar.disabled = false;
+                btnConectar.innerText = "Conectar";
+                btnConectar.style.backgroundColor = "var(--primary-color)";
+
+                if (error.name !== 'NotFoundError') {
+                    alert("Error al conectar: " + error.message);
+                }
+            }
         }
-    }
-}
 
         function onBluetoothDesconectado() {
             const btnConectar = document.getElementById('btn-conectar-ble');
+            btnConectar.disabled = false;
             btnConectar.innerText = "Conectar";
             btnConectar.style.backgroundColor = "var(--primary-color)";
             hablar("Sensor desconectado");
@@ -415,15 +419,13 @@ async function conectarBluetooth() {
                 const value = event.target.value;
                 let fuerzaRecibida = 0;
 
-                // Intento 1: Decodificar si el sensor envía texto plano (ASCII como '23.4\n')
                 const decoder = new TextDecoder('utf-8');
                 const texto = decoder.decode(value).trim();
 
                 if (!isNaN(parseFloat(texto))) {
                     fuerzaRecibida = parseFloat(texto);
                 } else {
-                    // Intento 2: Decodificar si viene en binario crudo (Entero de 16 bits)
-                    fuerzaRecibida = value.getUint16(0, true) / 10; // Suponiendo factor de escala común
+                    fuerzaRecibida = value.getUint16(0, true) / 10;
                 }
 
                 if(!isNaN(fuerzaRecibida)) {
@@ -452,7 +454,7 @@ async function conectarBluetooth() {
         const containerNode = document.getElementById('main-container');
 
         const TOLERANCIA_KG = 1.5;
-        
+
         window.onload = function() {
             let pesoGuardado = localStorage.getItem('escalador_peso');
             if(pesoGuardado) document.getElementById('global-peso').value = pesoGuardado;
@@ -461,8 +463,7 @@ async function conectarBluetooth() {
             calcularKgObjetivo();
             calcularTargetResistencia();
             dibujarGraficaLinea('canvas-test', []); dibujarGraficaLinea('canvas-train', []); dibujarGraficaLinea('canvas-resis', []);
-            
-            // OPTIMIZACIÓN: Bajamos la frecuencia a 300ms para que no sature el menú Bluetooth
+
             setInterval(actualizarZonasColorDisplay, 300);
 
             // SOLUCIÓN PARA LA SUSPENSIÓN DE PANTALLA
@@ -506,7 +507,8 @@ async function conectarBluetooth() {
         function cambiarPestana(pestanaId) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            event.target.classList.add('active'); document.getElementById(pestanaId).classList.add('active');
+            if(event && event.target) event.target.classList.add('active'); 
+            document.getElementById(pestanaId).classList.add('active');
             pararRutina();
             if(pestanaId === 'tab-historial') renderizarHistorial();
             if(pestanaId === 'tab-resistencia') calcularTargetResistencia();
@@ -685,14 +687,13 @@ async function conectarBluetooth() {
             if (modal) modal.style.display = 'none';
         }
 
+        // Modificado para evitar errores de referencias en los eventos inline
         function borrarHistorial() {
-            const modal = document.getElementById('custom-confirm-modal');
-            if (modal) modal.style.display = 'flex';
+            document.getElementById('custom-confirm-modal').style.display = 'flex';
         }
 
         function cerrarConfirmarBorrado() {
-            const modal = document.getElementById('custom-confirm-modal');
-            if (modal) modal.style.display = 'none';
+            document.getElementById('custom-confirm-modal').style.display = 'none';
         }
 
         function confirmarBorradoHistorial() {
@@ -731,14 +732,15 @@ async function conectarBluetooth() {
                     let historialFinal = [...historialImportado, ...historialActual];
                     localStorage.setItem('fuerza_historial', JSON.stringify(historialFinal));
                     renderizarHistorial();
-                    alert(`¡Éxito! Se han restaurado ${historialImportado.length} sesiones en tu nuevo teléfono.`);
+                    alert(`¡Éxito! Se han restaurado ${historialImportado.length} sesiones.`);
                 } else {
-                    alert("El archivo no tiene un formato válido de CrimpLab.");
+                    alert("El archivo no tiene un formato válido.");
                 }
             };
             reader.readAsText(file);
         }
 
+        // Corregido
         function exportarCSV() {
             let historial = JSON.parse(localStorage.getItem('fuerza_historial')) || []; if(historial.length === 0) { alert("Historial vacío."); return; }
             let csvContent = "data:text/csv;charset=utf-8,Fecha,Tipo,Descripcion,Resultado\n";
@@ -760,7 +762,7 @@ async function conectarBluetooth() {
         // --- TEST DE FUERZA MÁXIMA (PROTOCOLO IRCRA) ---
         function ejecutarTestRutin() {
             pararRutina();
-            activarWakeLock(); // Bloquear apagado de pantalla
+            activarWakeLock();
             const tTrabajo = parseInt(document.getElementById('test-tiempo').value);
             const tDescanso = parseInt(document.getElementById('test-descanso').value);
             const intentosTotales = parseInt(document.getElementById('test-intentos').value);
@@ -832,7 +834,7 @@ async function conectarBluetooth() {
             if(modoManos === 'der' && recordDer <= 0) { alert("Primero debes realizar un Test Max con la mano derecha."); return; }
             if(modoManos === 'ambas' && (recordIzq <= 0 || recordDer <= 0)) { alert("Necesitas registrar el Test Max de AMBAS manos antes de iniciar este test combinado."); return; }
 
-            activarWakeLock(); // Bloquear apagado de pantalla
+            activarWakeLock();
             let repsCompletadas = 0; let modo = 'COUNTDOWN'; let tiempoRestante = 3; datosGraficaResis = [];
             let fallosCargaSeguidos = 0;
 
@@ -924,7 +926,7 @@ async function conectarBluetooth() {
         // --- RUTINA: ENTRENAMIENTO INTELIGENTE ---
         function ejecutarEntrenamientoRutin() {
             pararRutina();
-            activarWakeLock(); // Bloquear apagado de pantalla
+            activarWakeLock();
             const tWork = parseInt(document.getElementById('train-work').value);
             const tRest = parseInt(document.getElementById('train-rest').value);
             const totalReps = parseInt(document.getElementById('train-reps').value);
@@ -976,7 +978,7 @@ async function conectarBluetooth() {
                 else if (modo === 'REST') {
                     let siguienteMano = (modoManos === 'izq') ? "IZQ" : (modoManos === 'der') ? "DER" : (repActual % 2 !== 0) ? "IZQ" : "DER";
                     document.getElementById('train-timer').innerText = `RECUPERA (${repActual-1}/${totalReps}): ${tiempoRestante}s (Prox: ${siguienteMano})`;
-                    if(tiempoRestante <= 0) { modo = 'WORK'; tiempoExistente = tWork; pitidoInicio(); hablar("Aplica carga"); establecerColorEstado('WORK'); }
+                    if(tiempoRestante <= 0) { modo = 'WORK'; tiempoRestante = tWork; pitidoInicio(); hablar("Aplica carga"); establecerColorEstado('WORK'); }
                     tiempoRestante--;
                 }
             }, 1000);
