@@ -115,6 +115,7 @@
 
         <div id="tab-vivo" class="tab-content active">
             <h2>Monitor en Tiempo Real</h2>
+            <h2>Monitor en Tiempo Real (VERSIÓN FILTRO FIJO)</h2>
             <p class="subtitle">Semiarqueo estricto (90º) - Regleta 15mm</p>
             <div id="display-vivo-node" class="display-fuerza"><span id="vivo-fuerza">0.0</span><span class="unidad"> Kg</span></div>
 
@@ -353,42 +354,55 @@
         let bleDevice = null;
         let bleCharacteristic = null;
 
-        async function conectarBluetooth() {
-            const btnConectar = document.getElementById('btn-conectar-ble');
-            try {
-                hablar("Buscando sensor");
-                
-                // MODIFICADO: Filtro ultra-estricto por nombre exacto para eliminar basura de la lista
-                bleDevice = await navigator.bluetooth.requestDevice({
-                    filters: [
-                        { name: 'IF_B7' } // Buscamos SOLO el dispositivo que se llame exactamente así
-                    ],
-                    optionalServices: [UUID_SERVICIO]
-                });
+async function conectarBluetooth() {
+    const btnConectar = document.getElementById('btn-conectar-ble');
+    
+    // Si ya se está intentando conectar, salimos para evitar que se pulse dos veces
+    if (btnConectar.disabled) return; 
 
-                btnConectar.innerText = "⏳ Enlazando...";
-                btnConectar.style.backgroundColor = "var(--warning-color)";
+    try {
+        // Bloqueamos el botón inmediatamente para proteger el navegador de colapsos
+        btnConectar.disabled = true;
+        btnConectar.innerText = "⏳ Buscando...";
+        btnConectar.style.backgroundColor = "var(--warning-color)";
+        
+        hablar("Buscando sensor");
+        
+        // Filtro estricto por nombre exacto
+        bleDevice = await navigator.bluetooth.requestDevice({
+            filters: [
+                { name: 'IF_B7' }
+            ],
+            optionalServices: [UUID_SERVICIO]
+        });
 
-                const server = await bleDevice.gatt.connect();
-                const service = await server.getPrimaryService(UUID_SERVICIO);
-                bleCharacteristic = await service.getCharacteristic(UUID_CARACTERISTICA);
+        btnConectar.innerText = "⏳ Enlazando...";
 
-                await bleCharacteristic.startNotifications();
-                bleCharacteristic.addEventListener('characteristicvaluechanged', procesarDatosFuerzaBluetooth);
+        const server = await bleDevice.gatt.connect();
+        const service = await server.getPrimaryService(UUID_SERVICIO);
+        bleCharacteristic = await service.getCharacteristic(UUID_CARACTERISTICA);
 
-                btnConectar.innerText = "🟢 Conectado";
-                btnConectar.style.backgroundColor = "#00c853";
-                hablar("Sensor conectado");
+        await bleCharacteristic.startNotifications();
+        bleCharacteristic.addEventListener('characteristicvaluechanged', procesarDatosFuerzaBluetooth);
 
-                bleDevice.addEventListener('gattserverdisconnected', onBluetoothDesconectado);
+        btnConectar.innerText = "🟢 Conectado";
+        btnConectar.style.backgroundColor = "#00c853";
+        hablar("Sensor conectado");
 
-            } catch (error) {
-                console.error(error);
-                btnConectar.innerText = "Conectar";
-                btnConectar.style.backgroundColor = "var(--primary-color)";
-                alert("Error al conectar: " + error.message);
-            }
+        bleDevice.addEventListener('gattserverdisconnected', onBluetoothDesconectado);
+
+    } catch (error) {
+        console.error(error);
+        // Si hay un error o el usuario cancela, volvemos a activar el botón
+        btnConectar.disabled = false;
+        btnConectar.innerText = "Conectar";
+        btnConectar.style.backgroundColor = "var(--primary-color)";
+        
+        if (error.name !== 'NotFoundError') {
+            alert("Error al conectar: " + error.message);
         }
+    }
+}
 
         function onBluetoothDesconectado() {
             const btnConectar = document.getElementById('btn-conectar-ble');
