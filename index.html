@@ -114,7 +114,7 @@
         </div>
 
         <div id="tab-vivo" class="tab-content active">
-            <h2>Monitor en Tiempo Real (VERSIÓN FILTRO FIJO) V0.2</h2>
+            <h2>Monitor en Tiempo Real (VERSIÓN FILTRO FIJO) V0.3</h2>
             <p class="subtitle">Semiarqueo estricto (90º) - Regleta 15mm</p>
             <div id="display-vivo-node" class="display-fuerza"><span id="vivo-fuerza">0.0</span><span class="unidad"> Kg</span></div>
 
@@ -358,51 +358,58 @@
         let bleDevice = null;
         let bleCharacteristic = null;
 
-        async function conectarBluetooth() {
-            const btnConectar = document.getElementById('btn-conectar-ble');
+      async function conectarBluetooth() {
+    const btnConectar = document.getElementById('btn-conectar-ble');
 
-            if (btnConectar.disabled) return;
+    if (btnConectar.disabled) return;
 
-            try {
-                btnConectar.disabled = true;
-                btnConectar.innerText = "⏳ Buscando...";
-                btnConectar.style.backgroundColor = "var(--warning-color)";
+    try {
+        btnConectar.disabled = true;
+        btnConectar.innerText = "⏳ Buscando...";
+        btnConectar.style.backgroundColor = "var(--warning-color)";
 
-                hablar("Buscando sensor");
+        hablar("Buscando sensor");
 
-                bleDevice = await navigator.bluetooth.requestDevice({
-                    filters: [
-                        { name: 'IF_B7' }
-                    ],
-                    optionalServices: [UUID_SEVICIO]
-                });
+        // PASO 1: Buscamos el dispositivo por su nombre exacto
+        bleDevice = await navigator.bluetooth.requestDevice({
+            filters: [
+                { name: 'IF_B7' }
+            ],
+            optionalServices: [UUID_SEVICIO] // Declaramos el servicio serie
+        });
 
-                btnConectar.innerText = "⏳ Enlazando...";
+        btnConectar.innerText = "⏳ Forzando enlace...";
 
-                const server = await bleDevice.gatt.connect();
-                const service = await server.getPrimaryService(UUID_SEVICIO);
-                bleCharacteristic = await service.getCharacteristic(UUID_CARACTERISTICA);
+        // PASO 2: Nos conectamos al servidor base del chip
+        const server = await bleDevice.gatt.connect();
+        
+        // PASO 3: En lugar de "negociar", exigimos el servicio y la característica directamente
+        const service = await server.getPrimaryService(UUID_SEVICIO);
+        bleCharacteristic = await service.getCharacteristic(UUID_CARACTERISTICA);
 
-                await bleCharacteristic.startNotifications();
-                bleCharacteristic.addEventListener('characteristicvaluechanged', procesarDatosFuerzaBluetooth);
+        // PASO 4: Abrimos el flujo para capturar todo lo que el sensor esté escupiendo (solo lectura)
+        await bleCharacteristic.startNotifications();
+        bleCharacteristic.addEventListener('characteristicvaluechanged', procesarDatosFuerzaBluetooth);
 
-                btnConectar.innerText = "🟢 Conectado";
-                btnConectar.style.backgroundColor = "#00c853";
-                hablar("Sensor conectado");
+        // ¡ÉXITO!
+        btnConectar.innerText = "🟢 Conectado";
+        btnConectar.style.backgroundColor = "#00c853";
+        hablar("Sensor conectado");
 
-                bleDevice.addEventListener('gattserverdisconnected', onBluetoothDesconectado);
+        bleDevice.addEventListener('gattserverdisconnected', onBluetoothDesconectado);
 
-            } catch (error) {
-                console.error(error);
-                btnConectar.disabled = false;
-                btnConectar.innerText = "Conectar";
-                btnConectar.style.backgroundColor = "var(--primary-color)";
+    } catch (error) {
+        console.error(error);
+        btnConectar.disabled = false;
+        btnConectar.innerText = "Conectar";
+        btnConectar.style.backgroundColor = "var(--primary-color)";
 
-                if (error.name !== 'NotFoundError') {
-                    alert("Error al conectar: " + error.message);
-                }
-            }
+        // Si el error es el clásico fallo de negociación, le damos un aviso amigable al usuario
+        if (error.name !== 'NotFoundError') {
+            alert("Error de enlace: La placa no responde al saludo del navegador. Asegúrate de reiniciar el sensor físicamente (apagar y encender) y reintenta.");
         }
+    }
+}
 
         function onBluetoothDesconectado() {
             const btnConectar = document.getElementById('btn-conectar-ble');
