@@ -115,7 +115,7 @@
 
         <div id="tab-vivo" class="tab-content active">
             <h2>Monitor en Tiempo Real</h2>
-            <h2>Monitor en Tiempo Real (VERSIÓN FILTRO FIJO)</h2>
+            <h2>Monitor en Tiempo Real (VERSIÓN FILTRO FIJO) V0.1</h2>
             <p class="subtitle">Semiarqueo estricto (90º) - Regleta 15mm</p>
             <div id="display-vivo-node" class="display-fuerza"><span id="vivo-fuerza">0.0</span><span class="unidad"> Kg</span></div>
 
@@ -357,30 +357,28 @@
 async function conectarBluetooth() {
     const btnConectar = document.getElementById('btn-conectar-ble');
     
-    // Si ya se está intentando conectar, salimos para evitar que se pulse dos veces
     if (btnConectar.disabled) return; 
 
     try {
-        // Bloqueamos el botón inmediatamente para proteger el navegador de colapsos
         btnConectar.disabled = true;
         btnConectar.innerText = "⏳ Buscando...";
         btnConectar.style.backgroundColor = "var(--warning-color)";
         
         hablar("Buscando sensor");
         
-        // Filtro estricto por nombre exacto
+        // Corregido: apuntando a las variables exactas de tu script
         bleDevice = await navigator.bluetooth.requestDevice({
             filters: [
                 { name: 'IF_B7' }
             ],
-            optionalServices: [UUID_SERVICIO]
+            optionalServices: [UUID_SEVICIO] // Asegúrate de que se llama igual que tu variable de arriba (sin la R)
         });
 
         btnConectar.innerText = "⏳ Enlazando...";
 
         const server = await bleDevice.gatt.connect();
-        const service = await server.getPrimaryService(UUID_SERVICIO);
-        bleCharacteristic = await service.getCharacteristic(UUID_CARACTERISTICA);
+        const service = await server.getPrimaryService(UUID_SEVICIO); // Corregido
+        bleCharacteristic = await service.getCharacteristic(UUID_CARACTERISTICA); // Corregido
 
         await bleCharacteristic.startNotifications();
         bleCharacteristic.addEventListener('characteristicvaluechanged', procesarDatosFuerzaBluetooth);
@@ -393,7 +391,6 @@ async function conectarBluetooth() {
 
     } catch (error) {
         console.error(error);
-        // Si hay un error o el usuario cancela, volvemos a activar el botón
         btnConectar.disabled = false;
         btnConectar.innerText = "Conectar";
         btnConectar.style.backgroundColor = "var(--primary-color)";
